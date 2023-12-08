@@ -8,9 +8,6 @@ import mlflow
 import ros_numpy
 import rospy
 
-import placog_msgs.srv
-
-
 @dataclasses.dataclass
 class Request:
   experience_clouds: [[(float, float, float)]]

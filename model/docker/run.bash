@@ -1,26 +1,43 @@
 #!/usr/bin/env bash
-set -o errexit
+
+set -e
 
 # Run the Docker container optionally with nvidia-docker2 support
 # All arguments to this script will be appended to a docker run command.
-# See vars.sh for env var handling
+# Environment vars that will be read:
+#   $DOCKER_ARGS: array containing additional Docker arguments (will be split on " ")
+#   $DOCKER_IMAGE: Docker image to run
+#   $DOCKER_NAME: value of `docker run`'s `--name` argument
+#   $DOCKER_NETWORK: value of `docker run`'s `--network` argument (default is "host")
+#   $NVIDIA: set to "false" to not try to use nvidia-docker2
 
 # Example command line:
 # ./run.bash /bin/bash
 
 # Get the path to this script
 SCRIPTPATH="$(dirname "$0")"
-# Source the vars
-. "${SCRIPTPATH}/vars.bash"
 
-# Read in the docker args from a string
-read -a DOCKER_ARGS <<< "${DOCKER_ARGS}"
+# Read environment vars
+IFS=" " read -a DOCKER_ARGS <<< "$DOCKER_ARGS"
 
+# Container image
+if [ -z "$DOCKER_IMAGE" ]; then
+  DOCKER_IMAGE="logreg-test-modeli"
+fi
+
+# Container name
+if [ -z "$DOCKER_NAME" ]; then
+  DOCKER_NAME="logreg-test-modelc"
+fi
 DOCKER_ARGS+=("--name")
-DOCKER_ARGS+=("${DOCKER_NAME}")
+DOCKER_ARGS+=("$DOCKER_NAME")
 
+# Container network
+if [ -z "$DOCKER_NETWORK" ]; then
+  DOCKER_NETWORK="host"
+fi
 DOCKER_ARGS+=("--network")
-DOCKER_ARGS+=("${DOCKER_NETWORK}")
+DOCKER_ARGS+=("$DOCKER_NETWORK")
 
 # Start interactive if stdin is a terminal
 if [ -t 0 ]; then
@@ -28,25 +45,18 @@ if [ -t 0 ]; then
   DOCKER_ARGS+=("--tty")
 fi
 
-# If both check out, use nvidia-docker2
-if [ "${NVIDIA}" == "true" ] && [ "${HAS_NVIDIA}" -gt 0 ] && [ "${HAS_NVIDIA_CONTAINER_SUPPORT}" -gt 0 ]; then
-  DOCKER_ARGS+=("--env"); DOCKER_ARGS+=("NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics")
-  DOCKER_ARGS+=("--env"); DOCKER_ARGS+=("NVIDIA_VISIBLE_DEVICES=all")
-  DOCKER_ARGS+=("--gpus"); DOCKER_ARGS+=("all")
-  DOCKER_ARGS+=("--runtime"); DOCKER_ARGS+=("nvidia")
-fi
-
 # ROS
-if [ -n "${ROS_MASTER_URI}" ]; then
+if [ -n "$ROS_MASTER_URI" ]; then
   DOCKER_ARGS+=("--env")
   DOCKER_ARGS+=("ROS_MASTER_URI")
 fi
 
 # Start container
-set -o xtrace
+echo "$DOCKER_IMAGE"
+echo "${DOCKER_ARGS[@]}"
 docker run \
   --privileged \
   --rm \
   "${DOCKER_ARGS[@]}" \
-  "${DOCKER_IMAGE}" \
+  "$DOCKER_IMAGE" \
   "$@"
