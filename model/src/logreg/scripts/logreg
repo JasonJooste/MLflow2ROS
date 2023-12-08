@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+
+import dataclasses
+import functools
+
+import geometry_msgs.msg
+import mlflow
+import ros_numpy
+import rospy
+
+import placog_msgs.srv
+
+
+@dataclasses.dataclass
+class Request:
+  experience_clouds: [[(float, float, float)]]
+  query_clouds: [[(float, float, float)]]
+  top_n: int
+
+
+@dataclasses.dataclass
+class QueryResult:
+  experience_index: int
+  translation_x: float
+  translation_y: float
+  translation_z: float
+  rotation_w: float
+  rotation_x: float
+  rotation_y: float
+  rotation_z: float
+
+
+def message_interface(request, model=None):
+  """Converts the inputs and outputs to and from ROS messages respectively"""
+
+  # Get the top_n param
+  # Note: Eventually this could be passed by the message
+  top_n = rospy.get_param("~egonn_top_n")
+
+  # Build a model request by converting the clouds into to xyz arrays
+  experience_cloud_headers = [c.header for c in request.experience_clouds]
+  experience_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(c) for c in request.experience_clouds]
+  query_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(request.query_cloud)]
+  request = Request(experience_clouds, query_clouds, top_n)
+
+  # Use the model to make the prediction
+  ranked_cloud_transforms = model.predict(request)
+
+  # Build a service response from the prediction
+  response = placog_msgs.srv.FindCloudTransformsResponse()
+  for result in ranked_cloud_transforms[0]:
+    transform_stamped = geometry_msgs.msg.TransformStamped()
+    transform_stamped.header = experience_cloud_headers[result.experience_index]
+    transform_stamped.child_frame_id = transform_stamped.header.frame_id
+    transform_stamped.transform.translation.x = result.translation_x
+    transform_stamped.transform.translation.y = result.translation_y
+    transform_stamped.transform.translation.z = result.translation_z
+    transform_stamped.transform.rotation.w = result.rotation_w
+    transform_stamped.transform.rotation.x = result.rotation_x
+    transform_stamped.transform.rotation.y = result.rotation_y
+    transform_stamped.transform.rotation.z = result.rotation_z
+    response.ranked_transforms.append(transform_stamped)
+
+  return response
+
+
+def main():
+  """Start the egonn node with the message interface function as the service command"""
+  rospy.init_node("egonn", anonymous=False)
+
+  if not rospy.has_param("~egonn_top_n"):
+    rospy.logwarn("egonn_top_n not set. Defaulting to returning a single transform")
+    rospy.set_param("~egonn_top_n", 1)
+
+  # Pull in the egonn model
+  pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/model")
+  rospy.loginfo("EgoNN loaded")
+
+  rospy.Service(
+      "~find_cloud_transforms",
+      placog_msgs.srv.FindCloudTransforms,
+      functools.partial(message_interface, model=pyfunc_model),
+  )
+
+  rospy.spin()
+
+
+if __name__ == "__main__":
+  main()
