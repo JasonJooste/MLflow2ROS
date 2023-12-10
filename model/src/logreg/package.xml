@@ -9,7 +9,6 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>placog_msgs</depend>
   <depend>ros_numpy</depend>
   <depend>tf</depend>
 

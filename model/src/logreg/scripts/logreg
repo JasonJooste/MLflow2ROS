@@ -12,7 +12,6 @@ import rospy
 class Request:
   experience_clouds: [[(float, float, float)]]
   query_clouds: [[(float, float, float)]]
-  top_n: int
 
 
 @dataclasses.dataclass
@@ -27,14 +26,10 @@ class QueryResult:
   rotation_z: float
 
 
-def message_interface(request, model=None):
+def message_interface(request, model):
   """Converts the inputs and outputs to and from ROS messages respectively"""
 
-  # Get the top_n param
-  # Note: Eventually this could be passed by the message
-  top_n = rospy.get_param("~egonn_top_n")
-
-  # Build a model request by converting the clouds into to xyz arrays
+  # Build a model request
   experience_cloud_headers = [c.header for c in request.experience_clouds]
   experience_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(c) for c in request.experience_clouds]
   query_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(request.query_cloud)]
@@ -63,19 +58,15 @@ def message_interface(request, model=None):
 
 def main():
   """Start the egonn node with the message interface function as the service command"""
-  rospy.init_node("egonn", anonymous=False)
-
-  if not rospy.has_param("~egonn_top_n"):
-    rospy.logwarn("egonn_top_n not set. Defaulting to returning a single transform")
-    rospy.set_param("~egonn_top_n", 1)
+  rospy.init_node("logreg", anonymous=False)
 
   # Pull in the egonn model
   pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/model")
-  rospy.loginfo("EgoNN loaded")
+  rospy.loginfo("Model loaded")
 
   rospy.Service(
-      "~find_cloud_transforms",
-      placog_msgs.srv.FindCloudTransforms,
+      "~compute_iris",
+      msgs.srv.PredictIris,
       functools.partial(message_interface, model=pyfunc_model),
   )
 

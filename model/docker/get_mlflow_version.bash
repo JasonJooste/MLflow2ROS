@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Use a mlflow docker image to access the version number of the production version of a registered model
-MODEL="egonn-multi-q-top-n"
+MODEL="tracking-quickstart"
 FILTER_STR="name=\'$MODEL\'"
 STAGE=Production
 VERSION_CMD="import mlflow;v=[m for m in mlflow.search_model_versions(filter_string=\"$FILTER_STR\") if m.current_stage==\"$STAGE\"][0].version;print(v)"

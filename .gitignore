@@ -1,0 +1,8 @@
+.vscode/
+build/
+data/
+install_deps.bash
+install/
+log/
+rosdep.out
+variables
