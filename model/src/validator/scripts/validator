@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import rospy
+
+import test_msgs.srv
+
+import numpy as np
+import pandas as pd
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+def main():
+  rospy.init_node("validator", anonymous=False)
+  
+  # Load the Iris dataset
+  X, y = datasets.load_iris(return_X_y=True)
+
+  # Split the data into training and test sets
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  req = test_msgs.srv.PredictIrisRequest(X_test.ravel())
+
+  print("waiting for service")
+  rospy.wait_for_service('compute_iris')
+
+  logreg = rospy.ServiceProxy('compute_iris', test_msgs.srv.PredictIris)
+  try:
+    predictions = logreg(req).predicted_class
+  except rospy.ServiceException as exc:
+    print("Service did not process request: " + str(exc))
+
+  iris_feature_names = datasets.load_iris().feature_names
+
+  # Convert X_test validation feature data to a Pandas DataFrame
+  result = pd.DataFrame(X_test, columns=iris_feature_names)
+
+  # Add the actual classes to the DataFrame
+  result["actual_class"] = y_test
+
+  # Add the model predictions to the DataFrame
+  result["predicted_class"] = predictions
+
+  print(result[:4])
+
+  rospy.spin()
+
+
+if __name__ == "__main__":
+  main()

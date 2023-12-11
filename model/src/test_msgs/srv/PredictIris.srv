@@ -2,4 +2,4 @@ float64[] iris_input
 
 ---
 
-float64[] predicted_class
+int32[] predicted_class

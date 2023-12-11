@@ -3,9 +3,9 @@
 import dataclasses
 import functools
 
-import geometry_msgs.msg
 import mlflow
 import rospy
+import numpy as np
 
 import test_msgs.srv
 
@@ -13,18 +13,13 @@ def message_interface(request, model):
   """Converts the inputs and outputs to and from ROS messages respectively"""
 
   # Build a model request
-  # experience_cloud_headers = [c.header for c in request.experience_clouds]
-  # experience_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(c) for c in request.experience_clouds]
-  # query_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(request.query_cloud)]
-  # request = Request(experience_clouds, query_clouds)
+  data = np.array(request.iris_input).reshape(-1, 4)
 
   # Use the model to make the prediction
-  predictions = model.predict(request)
+  predictions = model.predict(data)
 
   # Build a service response from the prediction
-  response = test_msgs.srv.PredictIrisResponse()
-  
-  reponse.predicted_class.append(predictions)
+  response = test_msgs.srv.PredictIrisResponse(predictions)
 
   return response
 
@@ -38,7 +33,7 @@ def main():
   rospy.loginfo("Model loaded")
 
   rospy.Service(
-      "~compute_iris",
+      "compute_iris",
       test_msgs.srv.PredictIris,
       functools.partial(message_interface, model=pyfunc_model),
   )
