@@ -15,7 +15,7 @@ WORKSPACEPATH="$(realpath "$SCRIPTPATH/..")"
 
 # Default container name
 if [ -z "$DOCKER_NAME" ]; then
-  DOCKER_NAME="placog-egonn"
+  DOCKER_NAME="logreg_container"
 fi
 
 # Default image
@@ -23,7 +23,7 @@ if [ -z "$DOCKER_TAG" ]; then
   DOCKER_TAG="$(cd "$SCRIPTPATH"; git rev-parse --abbrev-ref HEAD | sed -E s/[^a-zA-Z0-9_\.\-]/_/g || echo latest)"
 fi
 if [ -z "$DOCKER_IMAGE" ]; then
-  DOCKER_IMAGE="docker-registry.it.csiro.au/refarm/placog-egonn:$DOCKER_TAG"
+  DOCKER_IMAGE="logreg_testimg:$DOCKER_TAG"
 fi
 
 # Default network
