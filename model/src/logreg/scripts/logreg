@@ -5,53 +5,26 @@ import functools
 
 import geometry_msgs.msg
 import mlflow
-import ros_numpy
 import rospy
 
-@dataclasses.dataclass
-class Request:
-  experience_clouds: [[(float, float, float)]]
-  query_clouds: [[(float, float, float)]]
-
-
-@dataclasses.dataclass
-class QueryResult:
-  experience_index: int
-  translation_x: float
-  translation_y: float
-  translation_z: float
-  rotation_w: float
-  rotation_x: float
-  rotation_y: float
-  rotation_z: float
-
+import test_msgs.srv
 
 def message_interface(request, model):
   """Converts the inputs and outputs to and from ROS messages respectively"""
 
   # Build a model request
-  experience_cloud_headers = [c.header for c in request.experience_clouds]
-  experience_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(c) for c in request.experience_clouds]
-  query_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(request.query_cloud)]
-  request = Request(experience_clouds, query_clouds, top_n)
+  # experience_cloud_headers = [c.header for c in request.experience_clouds]
+  # experience_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(c) for c in request.experience_clouds]
+  # query_clouds = [ros_numpy.point_cloud2.pointcloud2_to_xyz_array(request.query_cloud)]
+  # request = Request(experience_clouds, query_clouds)
 
   # Use the model to make the prediction
-  ranked_cloud_transforms = model.predict(request)
+  predictions = model.predict(request)
 
   # Build a service response from the prediction
-  response = placog_msgs.srv.FindCloudTransformsResponse()
-  for result in ranked_cloud_transforms[0]:
-    transform_stamped = geometry_msgs.msg.TransformStamped()
-    transform_stamped.header = experience_cloud_headers[result.experience_index]
-    transform_stamped.child_frame_id = transform_stamped.header.frame_id
-    transform_stamped.transform.translation.x = result.translation_x
-    transform_stamped.transform.translation.y = result.translation_y
-    transform_stamped.transform.translation.z = result.translation_z
-    transform_stamped.transform.rotation.w = result.rotation_w
-    transform_stamped.transform.rotation.x = result.rotation_x
-    transform_stamped.transform.rotation.y = result.rotation_y
-    transform_stamped.transform.rotation.z = result.rotation_z
-    response.ranked_transforms.append(transform_stamped)
+  response = test_msgs.srv.PredictIrisResponse()
+  
+  reponse.predicted_class.append(predictions)
 
   return response
 
@@ -66,7 +39,7 @@ def main():
 
   rospy.Service(
       "~compute_iris",
-      msgs.srv.PredictIris,
+      test_msgs.srv.PredictIris,
       functools.partial(message_interface, model=pyfunc_model),
   )
 

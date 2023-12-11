@@ -9,7 +9,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>ros_numpy</depend>
+  <depend>test_msgs</depend>
   <depend>tf</depend>
 
 </package>

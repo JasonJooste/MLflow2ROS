@@ -72,4 +72,4 @@ FROM base_stage as prod_stage
 COPY install/ install/
 ARG MODEL_VERSION
 ENV MLFLOW_TRACKING_URI="http://ras-b2-ph.nexus.csiro.au:5000"
-# RUN mlflow artifacts download -u models:/tracking-quickstart/1 -d /model
+RUN mlflow artifacts download -u models:/tracking-quickstart/1 -d /model
