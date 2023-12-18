@@ -1,0 +1,14 @@
+# Install ROS1 Noetic. Reference: http://wiki.ros.org/noetic/Installation/Ubuntu 
+
+# Setup your sources.list
+
+RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros-latest.list'
+
+# Set up your keys
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654
+RUN apt-get update && apt-get install -y gnupg
+RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
+
+# Installation
+RUN apt update
+RUN apt install ros-noetic-ros-base
