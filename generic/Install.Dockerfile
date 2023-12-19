@@ -36,3 +36,7 @@ COPY src src
 # Build ROS packages 
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     colcon build --event-handlers console_cohesion+ status-
+
+FROM base as prod
+
+COPY --from=build /workspace/install install

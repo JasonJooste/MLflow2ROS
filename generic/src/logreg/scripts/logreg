@@ -28,7 +28,7 @@ def main():
   rospy.init_node("logreg", anonymous=False)
 
   # Pull in the egonn model
-  pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/model")
+  pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/opt/ml/model")
   rospy.loginfo("Model loaded")
 
   rospy.Service(
