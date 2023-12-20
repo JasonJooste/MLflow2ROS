@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-MODEL_URI="models:/tracking-quickstart/1"
-DOCKER_IMAGE="testi"
-
 SCRIPTPATH="$(dirname "$0")"
 DOCFILE=$SCRIPTPATH/dockerfile/Dockerfile
 
-export MLFLOW_TRACKING_URI="http://ras-b2-ph.nexus.csiro.au:5000"
+source "$SCRIPTPATH/config.cfg"
 
 mlflow models generate-dockerfile --model-uri "$MODEL_URI" --output-directory "$SCRIPTPATH/dockerfile"
 
