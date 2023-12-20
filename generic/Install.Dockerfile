@@ -15,8 +15,8 @@ RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt
 RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu /$UBUNTU_DISTRO main" > /etc/apt/sources.list.d/ros-latest.list'
 
 # Installation
-RUN apt-get update
-RUN apt-get install -y ros-$ROS_DISTRO-ros-base
+RUN apt-get update && \
+  apt-get install -y ros-$ROS_DISTRO-ros-base
 
 WORKDIR /workspace
 
