@@ -26,6 +26,10 @@ RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /root/.bashrc \
   && echo '  source /workspace/install/setup.bash' >> /root/.bashrc \
   && echo 'fi' >> /root/.bashrc
 
+FROM base as dev
+RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
+RUN pip install configobj
+
 # Build the model's ROS node and install it on the image 
 FROM base as build
 

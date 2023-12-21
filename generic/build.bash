@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+# The path to this script
 SCRIPTPATH="$(dirname "$0")"
 DOCFILE=$SCRIPTPATH/dockerfile/Dockerfile
 
