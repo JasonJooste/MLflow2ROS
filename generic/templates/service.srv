@@ -1,7 +1,7 @@
 {{ request.type }} {{ request.name }}
-string REQ_SHAPE={{ request.shape }}
+string REQ_SHAPE="{{ request.shape }}"
 
 ---
 
 {{ response.type }} {{ response.name }}
-string RES_SHAPE={{ response.shape }}
+string RES_SHAPE="{{ response.shape }}"
