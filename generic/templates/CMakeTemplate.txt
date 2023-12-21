@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16.3)
 
-project(tracking_quickstart)
+project(logreg)
 
 find_package(catkin REQUIRED COMPONENTS rospy)
 
 catkin_package()
 
 catkin_install_python(
-  PROGRAMS scripts/tracking_quickstart
+  PROGRAMS scripts/logreg
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

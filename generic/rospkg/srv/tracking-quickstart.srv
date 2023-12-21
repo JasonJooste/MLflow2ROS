@@ -1,7 +1,0 @@
-float64[] tracking-quickstart-req
-string REQ_SHAPE=[-1, 4]
-
----
-
-int64[] tracking-quickstart-res
-string RES_SHAPE=[-1]

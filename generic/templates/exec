@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+import functools
+
+import mlflow
+import rospy
+import numpy as np
+
+import {{ yes }}.srv
+
+def message_interface(request, model):
+  """Converts the inputs and outputs to and from ROS messages respectively"""
+
+  # Build a model request
+  data = np.array(request.iris_input).reshape(-1, 4)
+
+  # Use the model to make the prediction
+  predictions = model.predict(data)
+
+  # Build a service response from the prediction
+  response = test_msgs.srv.PredictIrisResponse(predictions)
+
+  return response
+
+
+def main():
+  """Start the model node with the message interface function as the service command"""
+  rospy.init_node("{{ node.name }}", anonymous=False)
+
+  # Pull in the mlflow model
+  pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/opt/ml/model")
+  rospy.loginfo("Model loaded")
+
+  rospy.Service(
+      "{{ node.name }}-service",
+      test_msgs.srv.PredictIris,
+      functools.partial(message_interface, model=pyfunc_model),
+  )
+
+  rospy.spin()
+
+
+if __name__ == "__main__":
+  main()
+  

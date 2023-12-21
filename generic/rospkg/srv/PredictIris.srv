@@ -1,5 +1,0 @@
-float64[] iris_input
-
----
-
-int32[] predicted_class

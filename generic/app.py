@@ -34,7 +34,7 @@ class Srv():
     response: Msg
 
 
-def unpack_type(sig, name): 
+def unpack_schema(sig, name): 
     ros_dtype = None
     shape = None
     
@@ -47,24 +47,14 @@ def unpack_type(sig, name):
     # TODO: fixed size cases
     return Msg(ros_dtype + "[]", name, shape) 
 
-def gen_msg_files():
-    cfg = ConfigObj(os.path.join(__location__, CONFIG_NAME))
-    remote_uri = cfg['MODEL_URI']
-    model_name = remote_uri.split('/')[-2]
-    
+def gen_msg_files(env, model_name):
     pyfunc_model = mlflow.pyfunc.load_model(model_uri=os.path.join(__location__, LOCAL_URI))
     sig = pyfunc_model._model_meta._signature.to_dict()
     
-    req = unpack_type(sig=sig["inputs"], name=model_name + "-req")
-    res = unpack_type(sig=sig["outputs"], name=model_name + "-res")
+    req = unpack_schema(sig=sig["inputs"], name=model_name + "_req")
+    res = unpack_schema(sig=sig["outputs"], name=model_name + "_res")
     
     service = Srv(req, res)
-
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=os.path.join(__location__, "templates")),
-        autoescape=jinja2.select_autoescape,
-        undefined=jinja2.StrictUndefined
-    )
     
     template = env.get_template("service.srv")
     
@@ -75,14 +65,27 @@ def gen_msg_files():
 def gen_file_structure():
     print("todo")
 
-def gen_interface():
-    print("todo")
+def gen_exec(env, model_name):
+    # define the template
+    # then fill it
+    template = env.get_template("exec")
+    
 
 
-def main():    
+def main():
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(searchpath=os.path.join(__location__, "templates")),
+        autoescape=jinja2.select_autoescape,
+        undefined=jinja2.StrictUndefined
+    )
+    
+    cfg = ConfigObj(os.path.join(__location__, CONFIG_NAME))
+    remote_uri = cfg['MODEL_URI']
+    model_name = remote_uri.split('/')[-2].replace("-", "_")
+    
     # gen_file_structure()
-    gen_msg_files()
-    # gen_interface()
+    gen_msg_files(env, model_name)
+    # gen_exec(env, model_name)
 
 
 if __name__ == "__main__":

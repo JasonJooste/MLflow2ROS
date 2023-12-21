@@ -20,4 +20,4 @@ sed -i '/model_dir/c\COPY dockerfile/model_dir /opt/ml/model' $DOCFILE
 
 cat $SCRIPTPATH/Install.Dockerfile >> $DOCFILE
 
-docker build --tag "$DOCKER_IMAGE" --file $DOCFILE $SCRIPTPATH
+docker build --tag "$DOCKER_IMAGE" --file $DOCFILE --target prod $SCRIPTPATH

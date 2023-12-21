@@ -27,6 +27,7 @@ RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /root/.bashrc \
   && echo 'fi' >> /root/.bashrc
 
 FROM base as dev
+
 RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
 RUN pip install configobj
 
@@ -35,7 +36,7 @@ FROM base as build
 
 RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
 
-COPY src src
+COPY rospkg src
 
 # Build ROS packages 
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
