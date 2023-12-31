@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <launch>
-  <node name="{{ node.name }}" pkg="{{ node.pkg }}"/>
+  <node name="{{ model_name}}" pkg="{{ model_name }}"/>
 </launch>
