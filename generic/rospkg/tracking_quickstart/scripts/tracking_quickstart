@@ -6,23 +6,16 @@ import mlflow
 import rospy
 import numpy as np
 
-from {{ msg_pkg }} import srv
+from tracking_quickstart_msgs import srv
 
 def message_interface(request, model):
     """Converts the inputs and outputs to and from ROS messages respectively"""
 
     # Get raw data from the ROS request
-    data = np.array(request.{{ request.name }})
+    data = np.array(request.tracking_quickstart_req)
 
     # reshape request if necessary
-    {# the -% denote trim symbols #}
-    {%- if request.shape|length > 0 -%}
-        data = data.reshape(
-            {%- for shape in request.shape -%}
-                {{ shape }}{{ ", " if not loop.last else "" }}
-            {%- endfor -%}
-        )
-    {%- endif %}
+    data = data.reshape(-1, 4)
 
     # Use the model to make the prediction
     predictions = model.predict(data)
@@ -31,22 +24,22 @@ def message_interface(request, model):
     predictions = predictions.ravel()
 
     # Build a service response from the prediction
-    response = srv.{{ response.name }}Response(predictions)
+    response = srv.tracking_quickstart_resResponse(predictions)
 
     return response
 
 
 def main():
     """Start the model node with the message interface function as the service command"""
-    rospy.init_node("{{ model_name }}")
+    rospy.init_node("tracking_quickstart")
 
     # Pull in the mlflow model
     pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/opt/ml/model")
     rospy.loginfo("Model loaded")
 
     rospy.Service(
-        "{{ model_name }}_service",
-        srv.{{ model_name }},
+        "tracking_quickstart_service",
+        srv.tracking_quickstart,
         functools.partial(message_interface, model=pyfunc_model),
     )
 
