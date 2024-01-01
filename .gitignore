@@ -8,3 +8,4 @@ rosdep.out
 variables
 mlruns/
 dockerfile/
+rospkg/
