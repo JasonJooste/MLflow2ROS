@@ -18,6 +18,10 @@ sed -i '/ENTRYPOINT/d' $DOCFILE
 # Edit the COPY command to work with our build context
 sed -i '/model_dir/c\COPY dockerfile/model_dir /opt/ml/model' $DOCFILE
 
-cat $SCRIPTPATH/Install.Dockerfile >> $DOCFILE
+cat $SCRIPTPATH/templates/addendum.Dockerfile >> $DOCFILE
 
-# docker build --tag "$DOCKER_IMAGE" --file $DOCFILE --target dev $SCRIPTPATH
+python3 $SCRIPTPATH/app.py
+
+cp -r $SCRIPTPATH/tracking_qs_validator $SCRIPTPATH/rospkg
+
+docker build --tag "$DOCKER_IMAGE" --file $DOCFILE --target prod $SCRIPTPATH

@@ -2,8 +2,6 @@ import os
 import mlflow
 import jinja2
 from configobj import ConfigObj
-import rospy
-import numpy as np
 import json
 from dataclasses import dataclass, asdict
 from pathlib import Path
