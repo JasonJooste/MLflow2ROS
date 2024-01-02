@@ -9,3 +9,4 @@ variables
 mlruns/
 dockerfile/
 rospkg/
+venv/
