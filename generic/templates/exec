@@ -31,7 +31,7 @@ def message_interface(request, model):
     predictions = predictions.ravel()
 
     # Build a service response from the prediction
-    response = srv.{{ response.name }}Response(predictions)
+    response = srv.{{ model_name }}Response(predictions)
 
     return response
 
