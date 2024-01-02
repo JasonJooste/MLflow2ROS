@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+
+import rospy
+
+import tracking_quickstart_msgs.srv
+
+import pandas as pd
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+
+def main():
+  rospy.init_node("validator", anonymous=False)
+  
+  # Load the Iris dataset
+  X, y = datasets.load_iris(return_X_y=True)
+
+  # Split the data into training and test sets
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  req = tracking_quickstart_msgs.srv.tracking_quickstartRequest(X_test.ravel())
+
+  print("waiting for service")
+  rospy.wait_for_service('tracking_quickstart_service')
+
+  logreg = rospy.ServiceProxy('tracking_quickstart_service', tracking_quickstart_msgs.srv.tracking_quickstart)
+  try:
+    predictions = logreg(req).tracking_quickstart_res
+  except rospy.ServiceException as exc:
+    print("Service did not process request: " + str(exc))
+
+  iris_feature_names = datasets.load_iris().feature_names
+
+  # Convert X_test validation feature data to a Pandas DataFrame
+  result = pd.DataFrame(X_test, columns=iris_feature_names)
+
+  # Add the actual classes to the DataFrame
+  result["actual_class"] = y_test
+
+  # Add the model predictions to the DataFrame
+  result["tracking_quickstart_res"] = predictions
+
+  print(result[:4])
+
+  rospy.spin()
+
+
+if __name__ == "__main__":
+  main()

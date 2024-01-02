@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+
+  <name>validator</name>
+  <version>0.1.0</version>
+  <description>The docker model integration testing package</description>
+  <maintainer email="zhirong.lin@data61.csiro.au">Leo Lin</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>tracking_quickstart_msgs</depend>
+  <depend>tf</depend>
+
+</package>
