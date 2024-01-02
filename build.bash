@@ -22,6 +22,4 @@ cat $SCRIPTPATH/templates/addendum.Dockerfile >> $DOCFILE
 
 python3 $SCRIPTPATH/app.py
 
-cp -r $SCRIPTPATH/tracking_qs_validator $SCRIPTPATH/rospkg
-
 docker build --tag "$DOCKER_IMAGE" --file $DOCFILE --target prod $SCRIPTPATH
