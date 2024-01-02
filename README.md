@@ -8,13 +8,13 @@ This repository contains the source code of the ROS node generator for MLFLow mo
 4. `pip install -r requirements.txt` to install the requirements in the current environment
 
 ### Changing the model and docker image attributes
-Modify `generic/config.cfg`
-
-### Running the container
-Run `generic/run.bash`
+Modify `config.cfg`
 
 ### Building the container
-Run `generic/build.bash`
+Run `bash build.bash`
+
+### Running the container
+Run `bash run.bash`
 
 ### Running a ros image in a terminal
 Run `docker run -it --network host ros:noetic-ros-base-focal`
