@@ -5,7 +5,10 @@ import os
 from dataclasses import asdict, dataclass
 from os.path import join
 from pathlib import Path
+from typing_extensions import Annotated
+from typing import Optional
 
+import typer
 import jinja2
 import mlflow
 from configobj import ConfigObj
@@ -21,6 +24,7 @@ TENSOR_TO_ROS = {"float64": "float64", "int64": "int64"}
 # absolute path to the location of this script
 __location__ = os.path.realpath(join(os.getcwd(), os.path.dirname(__file__)))
 
+app = typer.Typer()
 
 @dataclass
 class Msg:
@@ -127,5 +131,20 @@ def main():
     gen_pkg(env, model_name, msg_pkg, msgs_dir, exec_dir)
 
 
+@app.command()
+def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = None):
+    pass
+
+
+@app.command()
+def generate_rospkg(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = None):
+    pass
+
+
+@app.command()
+def make_image(model_uri: str, image_name: Annotated[Optional[str], typer.Argument()] = None):
+    pass
+    
+
 if __name__ == "__main__":
-    main()
+    app()
