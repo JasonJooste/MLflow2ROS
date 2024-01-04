@@ -1,4 +1,0 @@
-mlflow==2.9.2
-configobj==5.0.8
-pylint==3.0.3
-black==23.12.1
