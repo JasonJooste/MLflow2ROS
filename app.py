@@ -111,7 +111,14 @@ def parse_model_name(remote_uri):
 
 
 @app.command()
-def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = "dockerfile"):
+def generate_dockerfile(model_uri: Annotated[str, typer.Argument(help="Location of the MLFLow model")],
+                        rospkg_directory: Annotated[Optional[str], typer.Argument(
+                            help="Location of the ROS package that will be run on the Docker image")] = "rospkg", 
+                        output_directory: Annotated[Optional[str], typer.Argument(
+                            help="Folder containing the generated files")] = "dockerfile"):
+    """
+    Creates the Dockerfile used to build the image containing the model and its ROS package.
+    """
     # get mlflow to generate their docker image
     subprocess.run(["mlflow", "models", "generate-dockerfile", "--model-uri", model_uri, 
                     "--output-directory", output_directory], check=True, text=True)
@@ -122,18 +129,16 @@ def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str
     with open(join(output_directory, "Dockerfile"), "w") as writer:
         # edit mlflow dockerfile
         for line in dockerfile:
-            # Add `as base` to the initial build stage
             if "FROM ubuntu" in line:
+                # Add `as base` to the initial build stage
                 line = line.rstrip() + " as base\n"
-
-            # Remove the entrypoint command in the dockerfile as we will define a new one later
-            if "ENTRYPOINT" in line:
+            elif "ENTRYPOINT" in line:
+                # Remove the entrypoint command in the dockerfile as we will define a new one later
                 continue
-
-            # Edit the COPY command to work with our build context
-            if "model_dir" in line: 
+            elif "model_dir" in line: 
+                # Edit the COPY command to work with our build context
                 line = f"COPY {output_directory}/model_dir /opt/ml/model\n"
-            
+
             writer.write(line)
     
         # add dockerfile addendum
@@ -143,14 +148,19 @@ def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str
             undefined=jinja2.StrictUndefined,
         )   
 
-        render_data = {"ubuntu_distro": "focal", "ros_distro": "noetic", "model_name": parse_model_name(model_uri)}
+        render_data = {"ubuntu_distro": "focal", "ros_distro": "noetic", "model_name": parse_model_name(model_uri),
+                       "rospkg_dir": rospkg_directory}
         
         template = env.get_template("addendum.Dockerfile")
         writer.write(template.render(render_data))
 
 
 @app.command()
-def generate_rospkg(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = "rospkg"):
+def generate_rospkg(model_uri: Annotated[str, typer.Argument(help="Location of the MLFLow model")], 
+                    output_directory: Annotated[Optional[str], typer.Argument(help="Folder containing the generated files")] = "rospkg"):
+    """
+    Creates the source files for the model's ROS node and message files.
+    """
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(searchpath=join(__location__, "templates")),
         autoescape=jinja2.select_autoescape,
@@ -174,7 +184,11 @@ def generate_rospkg(model_uri: str, output_directory: Annotated[Optional[str], t
 
 
 @app.command()
-def make_image(model_uri: str, image_name: Annotated[Optional[str], typer.Argument()] = None):
+def make_image(model_uri: Annotated[str, typer.Argument(help="Location of the MLFLow model")],
+               image_name: Annotated[Optional[str], typer.Argument()] = None):
+    """
+    Builds a Docker image containing the generated ROS node.
+    """
     generate_dockerfile(model_uri)
     generate_rospkg(model_uri)
 

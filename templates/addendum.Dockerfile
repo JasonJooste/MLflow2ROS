@@ -32,7 +32,7 @@ FROM base as build
 
 RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
 
-COPY rospkg src
+COPY {{ rospkg_dir }} src
 
 # Build ROS packages 
 RUN . /opt/ros/{{ ros_distro }}/setup.sh && \
