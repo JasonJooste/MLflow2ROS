@@ -8,6 +8,7 @@ from pathlib import Path
 from typing_extensions import Annotated
 from typing import Optional
 
+import subprocess
 import typer
 import jinja2
 import mlflow
@@ -106,6 +107,11 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
             f.write(template.render(render_data))
 
 
+def parse_model_name(remote_uri):
+    # might not work with local uri
+    return remote_uri.split("/")[-2].replace("-", "_")
+
+
 def main():
     # load jinja environment and read config
     env = jinja2.Environment(
@@ -115,7 +121,7 @@ def main():
     )
     cfg = ConfigObj(join(__location__, CONFIG_NAME))
     remote_uri = cfg["MODEL_URI"]
-    model_name = remote_uri.split("/")[-2].replace("-", "_")
+    model_name = parse_model_name(remote_uri)
     msg_pkg = model_name + "_msgs"
 
     exec_dir = join(__location__, "rospkg", model_name)
@@ -132,8 +138,42 @@ def main():
 
 
 @app.command()
-def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = None):
-    pass
+def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = "dockerfile"):
+    # get mlflow to generate their docker image
+    subprocess.run(["mlflow", "models", "generate-dockerfile", "--model-uri", model_uri, 
+                    "--output-directory", output_directory], check=True, text=True)
+    
+    with open(join(output_directory, "Dockerfile"), "r") as reader:
+        dockerfile = reader.readlines()
+
+    with open(join(output_directory, "Dockerfile"), "w") as writer:
+        # edit mlflow dockerfile
+        for line in dockerfile:
+            # Add `as base` to the initial build stage
+            if "FROM ubuntu" in line:
+                line = line.rstrip() + " as base\n"
+
+            # Remove the entrypoint command in the dockerfile as we will define a new one later
+            if "ENTRYPOINT" in line:
+                continue
+
+            # Edit the COPY command to work with our build context
+            if "model_dir" in line: 
+                line = f"COPY {output_directory}/model_dir /opt/ml/model\n"
+            
+            writer.write(line)
+    
+        # add dockerfile addendum
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(searchpath=join(__location__, "templates")),
+            autoescape=jinja2.select_autoescape,
+            undefined=jinja2.StrictUndefined,
+        )   
+
+        render_data = {"ubuntu_distro": "focal", "ros_distro": "noetic", "model_name": parse_model_name(model_uri)}
+        
+        template = env.get_template("addendum.Dockerfile")
+        writer.write(template.render(render_data))
 
 
 @app.command()
