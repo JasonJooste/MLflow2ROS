@@ -7,6 +7,7 @@ from os.path import join
 from pathlib import Path
 from typing_extensions import Annotated
 from typing import Optional
+from rich import print
 
 import subprocess
 import typer
@@ -174,7 +175,20 @@ def generate_rospkg(model_uri: str, output_directory: Annotated[Optional[str], t
 
 @app.command()
 def make_image(model_uri: str, image_name: Annotated[Optional[str], typer.Argument()] = None):
-    pass
+    generate_dockerfile(model_uri)
+    generate_rospkg(model_uri)
+
+    # create docker build command
+    cmd = ["docker", "build", "--file", join(__location__, "dockerfile", "Dockerfile"), "--target", "prod"]
+
+    if not (image_name is None):
+        cmd = cmd + ["--tag", image_name]
+
+    cmd.append(__location__)
+
+    print(f"Running command: '{' '.join(cmd)}'")
+
+    subprocess.run(cmd, check=True, text=True)
     
 
 if __name__ == "__main__":
