@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import json
 import subprocess
 from dataclasses import asdict, dataclass
@@ -40,9 +38,6 @@ class Srv:
 
 
 def unpack_schema(sig, name):
-    ros_dtype = None
-    shape = None
-
     sig = json.loads(sig)[0]
 
     if sig["type"] == "tensor":
@@ -53,12 +48,25 @@ def unpack_schema(sig, name):
     return Msg(ros_dtype + "[]", name, shape)
 
 
-def gen_msg(env, model_uri, model_name, msgs_dir):
-    pyfunc_model = mlflow.pyfunc.load_model(model_uri)
-    sig = pyfunc_model._model_meta._signature.to_dict()
+def filter_model_name(model_name):
+    # currently only removes dashes
+    return model_name.replace("-", "_")
 
-    req_msg_name = model_name + "_req"
-    res_msg_name = model_name + "_res"
+
+def get_model_uri(model_name, model_ver):
+    client = mlflow.client.MlflowClient()
+    return client.get_model_version_download_uri(model_name, model_ver)
+
+
+def gen_msg(env, model_name, model_ver, msgs_dir):
+    # get model signature
+    model_uri = get_model_uri(model_name, model_ver)
+    sig = mlflow.models.get_model_info(model_uri).signature.to_dict()
+
+    clean_name = filter_model_name(model_name)
+
+    req_msg_name = clean_name + "_req"
+    res_msg_name = clean_name + "_res"
 
     req = unpack_schema(sig["inputs"], req_msg_name)
     res = unpack_schema(sig["outputs"], res_msg_name)
@@ -67,24 +75,28 @@ def gen_msg(env, model_uri, model_name, msgs_dir):
 
     template = env.get_template("service.srv")
 
-    with open(join(msgs_dir, "srv", f"{model_name}.srv"), "w+", encoding="UTF-8") as f:
+    with open(join(msgs_dir, "srv", f"{clean_name}.srv"), "w", encoding="UTF-8") as f:
         f.write(template.render(asdict(service)))
 
     return service
 
 
 def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
+    clean_name = filter_model_name(model_name)
+
     render_data = asdict(srv)
-    render_data["model_name"] = model_name
+    render_data["model_name"] = clean_name
     render_data["msg_pkg"] = msg_pkg
 
     template = env.get_template("exec")
 
-    with open(join(exec_dir, "scripts", model_name), "w", encoding="UTF-8") as f:
+    with open(join(exec_dir, "scripts", clean_name), "w", encoding="UTF-8") as f:
         f.write(template.render(render_data))
 
 
 def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
+    clean_name = filter_model_name(model_name)
+
     # pairs of (<template name>, <output path>)
     files = (
         ("msgs_cmake_template.txt", join(msg_dir, "CMakeLists.txt")),
@@ -93,11 +105,11 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
         ("exec_package_template.xml", join(exec_dir, "package.xml")),
         (
             "exec_launch_template.launch",
-            join(exec_dir, "launch", f"{model_name}.launch"),
+            join(exec_dir, "launch", f"{clean_name}.launch"),
         ),
     )
 
-    render_data = {"model_name": model_name, "msg_pkg": msg_pkg}
+    render_data = {"model_name": clean_name, "msg_pkg": msg_pkg}
 
     for template_name, output_path in files:
         template = env.get_template(template_name)
@@ -106,22 +118,23 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
             f.write(template.render(render_data))
 
 
-def parse_model_name(remote_uri):
-    # might not work with local uri
-    return remote_uri.split("/")[-2].replace("-", "_")
-
-
 @app.command()
 def generate_dockerfile(
-    model_uri: Annotated[str, typer.Argument(help="Location of the MLFLow model")],
+    model_name: Annotated[
+        str, typer.Argument(help="Name of model as listed on the MLFlow Model Registry")
+    ],
+    model_ver: Annotated[
+        int,
+        typer.Argument(help="Version of the model as listed on the MLFlow Model Registry"),
+    ],
     rospkg_directory: Annotated[
         Optional[str],
-        typer.Argument(
+        typer.Option(
             help="Location of the ROS package that will be run on the Docker image"
         ),
     ] = "rospkg",
     output_directory: Annotated[
-        Optional[str], typer.Argument(help="Folder containing the generated files")
+        Optional[str], typer.Option(help="Folder containing the generated files")
     ] = "dockerfile",
 ):
     """
@@ -134,7 +147,7 @@ def generate_dockerfile(
             "models",
             "generate-dockerfile",
             "--model-uri",
-            model_uri,
+            get_model_uri(model_name, model_ver),
             "--output-directory",
             output_directory,
         ],
@@ -170,7 +183,7 @@ def generate_dockerfile(
         render_data = {
             "ubuntu_distro": "focal",
             "ros_distro": "noetic",
-            "model_name": parse_model_name(model_uri),
+            "model_name": filter_model_name(model_name),
             "rospkg_dir": rospkg_directory,
         }
 
@@ -180,9 +193,15 @@ def generate_dockerfile(
 
 @app.command()
 def generate_rospkg(
-    model_uri: Annotated[str, typer.Argument(help="Location of the MLFLow model")],
+    model_name: Annotated[
+        str, typer.Argument(help="Name of model as listed on the MLFlow Model Registry")
+    ],
+    model_ver: Annotated[
+        int,
+        typer.Argument(help="Version of the model as listed on the MLFlow Model Registry"),
+    ],
     output_directory: Annotated[
-        Optional[str], typer.Argument(help="Folder containing the generated files")
+        Optional[str], typer.Option(help="Folder containing the generated files")
     ] = "rospkg",
 ):
     """
@@ -194,10 +213,10 @@ def generate_rospkg(
         undefined=jinja2.StrictUndefined,
     )
 
-    model_name = parse_model_name(model_uri)
-    msg_pkg = model_name + "_msgs"
+    clean_name = filter_model_name(model_name)
+    msg_pkg = clean_name + "_msgs"
 
-    exec_dir = join(__location__, output_directory, model_name)
+    exec_dir = join(__location__, output_directory, clean_name)
     msgs_dir = join(__location__, output_directory, msg_pkg)
 
     # create directories
@@ -205,21 +224,31 @@ def generate_rospkg(
     Path(join(exec_dir, "scripts")).mkdir(parents=True, exist_ok=True)
     Path(join(msgs_dir, "srv")).mkdir(parents=True, exist_ok=True)
 
-    srv = gen_msg(env, model_uri, model_name, msgs_dir)
+    srv = gen_msg(env, model_name, model_ver, msgs_dir)
     gen_exec(env, model_name, msg_pkg, srv, exec_dir)
     gen_pkg(env, model_name, msg_pkg, msgs_dir, exec_dir)
+
+    print(f"Generated ROS package in directory {output_directory}")
 
 
 @app.command()
 def make_image(
-    model_uri: Annotated[str, typer.Argument(help="Location of the MLFLow model")],
-    image_name: Annotated[Optional[str], typer.Argument()] = None,
+    model_name: Annotated[
+        str, typer.Argument(help="Name of model as listed on the MLFlow Model Registry")
+    ],
+    model_ver: Annotated[
+        int,
+        typer.Argument(help="Version of the model as listed on the MLFlow Model Registry"),
+    ],
+    tag: Annotated[
+        Optional[str], typer.Option(help="Name of the generated image")
+    ] = None,
 ):
     """
     Builds a Docker image containing the generated ROS node.
     """
-    generate_dockerfile(model_uri)
-    generate_rospkg(model_uri)
+    generate_dockerfile(model_name, model_ver)
+    generate_rospkg(model_name, model_ver)
 
     # create docker build command
     cmd = [
@@ -231,8 +260,8 @@ def make_image(
         "prod",
     ]
 
-    if not image_name is None:
-        cmd = cmd + ["--tag", image_name]
+    if not tag is None:
+        cmd = cmd + ["--tag", tag]
 
     cmd.append(__location__)
 
