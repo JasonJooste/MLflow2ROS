@@ -12,10 +12,7 @@ import subprocess
 import typer
 import jinja2
 import mlflow
-from configobj import ConfigObj
 
-LOCAL_URI = "dockerfile/model_dir"
-CONFIG_NAME = "config.cfg"
 # Dict to convert tensor data types (i.e. numpy) to ROS data types
 # TODO: Finish filling out with:
 # - https://numpy.org/devdocs/user/basics.types.html
@@ -54,8 +51,8 @@ def unpack_schema(sig, name):
     return Msg(ros_dtype + "[]", name, shape)
 
 
-def gen_msg(env, model_name, msgs_dir):
-    pyfunc_model = mlflow.pyfunc.load_model(model_uri=join(__location__, LOCAL_URI))
+def gen_msg(env, model_uri, model_name, msgs_dir):
+    pyfunc_model = mlflow.pyfunc.load_model(model_uri)
     sig = pyfunc_model._model_meta._signature.to_dict()
 
     req_msg_name = model_name + "_req"
@@ -112,31 +109,6 @@ def parse_model_name(remote_uri):
     return remote_uri.split("/")[-2].replace("-", "_")
 
 
-def main():
-    # load jinja environment and read config
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=join(__location__, "templates")),
-        autoescape=jinja2.select_autoescape,
-        undefined=jinja2.StrictUndefined,
-    )
-    cfg = ConfigObj(join(__location__, CONFIG_NAME))
-    remote_uri = cfg["MODEL_URI"]
-    model_name = parse_model_name(remote_uri)
-    msg_pkg = model_name + "_msgs"
-
-    exec_dir = join(__location__, "rospkg", model_name)
-    msgs_dir = join(__location__, "rospkg", msg_pkg)
-
-    # create directories
-    Path(join(exec_dir, "launch")).mkdir(parents=True, exist_ok=True)
-    Path(join(exec_dir, "scripts")).mkdir(parents=True, exist_ok=True)
-    Path(join(msgs_dir, "srv")).mkdir(parents=True, exist_ok=True)
-
-    srv = gen_msg(env, model_name, msgs_dir)
-    gen_exec(env, model_name, msg_pkg, srv, exec_dir)
-    gen_pkg(env, model_name, msg_pkg, msgs_dir, exec_dir)
-
-
 @app.command()
 def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = "dockerfile"):
     # get mlflow to generate their docker image
@@ -177,8 +149,27 @@ def generate_dockerfile(model_uri: str, output_directory: Annotated[Optional[str
 
 
 @app.command()
-def generate_rospkg(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = None):
-    pass
+def generate_rospkg(model_uri: str, output_directory: Annotated[Optional[str], typer.Argument()] = "rospkg"):
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(searchpath=join(__location__, "templates")),
+        autoescape=jinja2.select_autoescape,
+        undefined=jinja2.StrictUndefined,
+    )
+
+    model_name = parse_model_name(model_uri)
+    msg_pkg = model_name + "_msgs"
+
+    exec_dir = join(__location__, output_directory, model_name)
+    msgs_dir = join(__location__, output_directory, msg_pkg)
+
+    # create directories
+    Path(join(exec_dir, "launch")).mkdir(parents=True, exist_ok=True)
+    Path(join(exec_dir, "scripts")).mkdir(parents=True, exist_ok=True)
+    Path(join(msgs_dir, "srv")).mkdir(parents=True, exist_ok=True)
+
+    srv = gen_msg(env, model_uri, model_name, msgs_dir)
+    gen_exec(env, model_name, msg_pkg, srv, exec_dir)
+    gen_pkg(env, model_name, msg_pkg, msgs_dir, exec_dir)
 
 
 @app.command()
