@@ -5,6 +5,8 @@ import subprocess
 import dataclasses
 from pathlib import Path
 from typing import Optional
+import re
+import os
 
 import jinja2
 import mlflow
@@ -110,6 +112,39 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
             f.write(template.render(render_data))
 
 
+def edit_dockerfile(model_name, output_directory, rospkg_directory):
+    path = Path(output_directory)/"Dockerfile"
+    contents = path.read_text()
+
+    # rename mlflow generated Dockerfile 
+    os.rename(path, path.parent / "mlflow_base.dockerfile")
+
+    # Add `as base` to the initial build stage
+    contents = re.sub("FROM ubuntu:20.04", "FROM ubuntu:20.04 as base", contents)
+    # Remove the entrypoint command in the dockerfile as we will define a new one later
+    contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
+    # Edit the COPY command to work with our build context
+    contents = re.sub(r"(?<=COPY )(.*)(?= /opt/ml/model)", f"{output_directory}/model_dir", contents)
+
+    env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(searchpath=Path.cwd()/"templates"),
+            autoescape=jinja2.select_autoescape,
+            undefined=jinja2.StrictUndefined,
+        )
+
+    render_data = {
+        "ubuntu_distro": "focal",
+        "ros_distro": "noetic",
+        "model_name": filter_model_name(model_name),
+        "rospkg_dir": rospkg_directory,
+    }
+
+    template = env.get_template("addendum.Dockerfile")
+    contents = contents + template.render(render_data)
+
+    path.write_text(contents)
+
+
 @app.command()
 def generate_dockerfile(
     model_name: Annotated[
@@ -148,42 +183,7 @@ def generate_dockerfile(
         text=True,
     )
 
-    dfile_path = Path(output_directory)/"Dockerfile"
-
-    with open(Path(output_directory)/"Dockerfile", "r", encoding="UTF-8") as reader:
-        dfile_contents = reader.readlines()
-
-    with open(dfile_path, "w", encoding="UTF-8") as writer:
-        # edit mlflow dockerfile
-        for line in dfile_contents:
-            if "FROM ubuntu" in line:
-                # Add `as base` to the initial build stage
-                line = line.rstrip() + " as base\n"
-            elif "ENTRYPOINT" in line:
-                # Remove the entrypoint command in the dockerfile as we will define a new one later
-                continue
-            elif "model_dir" in line:
-                # Edit the COPY command to work with our build context
-                line = f"COPY {output_directory}/model_dir /opt/ml/model\n"
-
-            writer.write(line)
-
-        # add dockerfile addendum
-        env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(searchpath=Path.cwd()/"templates"),
-            autoescape=jinja2.select_autoescape,
-            undefined=jinja2.StrictUndefined,
-        )
-
-        render_data = {
-            "ubuntu_distro": "focal",
-            "ros_distro": "noetic",
-            "model_name": filter_model_name(model_name),
-            "rospkg_dir": rospkg_directory,
-        }
-
-        template = env.get_template("addendum.Dockerfile")
-        writer.write(template.render(render_data))
+    edit_dockerfile(model_name, output_directory, rospkg_directory)
 
 
 @app.command()
