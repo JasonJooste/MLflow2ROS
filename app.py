@@ -215,6 +215,10 @@ def generate_dockerfile(
     The model is downloaded from the MLFLow model registry as part of the process.
     WARNING: the image will NOT build if `--rospkg-directory` does not lead to a valid ROS package.
     """
+    if rospkg_directory == "rospkg" and not Path("rospkg").is_dir():
+        # rospkg doesn't exist, create it
+        generate_rospkg(model_name, model_ver)
+
     # get mlflow to generate their docker image
     subprocess.run(
         [
@@ -253,7 +257,6 @@ def make_image(
     The model is downloaded locally in the process.
     """
     generate_dockerfile(model_name, model_ver)
-    generate_rospkg(model_name, model_ver)
 
     # create docker build command
     cmd = [
