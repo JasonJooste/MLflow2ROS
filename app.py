@@ -88,7 +88,7 @@ def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
     render_data["msg_pkg"] = msg_pkg
 
     template = env.get_template("exec.py")
-    target_file = exec_dir / "scripts" / f"{clean_name}.py"
+    target_file = exec_dir / "scripts" / f"{clean_name}"
     target_file.write_text(template.render(render_data))
 
 
@@ -126,9 +126,9 @@ def edit_dockerfile(model_name, output_directory, rospkg_directory):
     assert not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
     # Edit the COPY command to work with our build context
-    assert not re.search(r"(?<=COPY )(.*)(?= /opt/ml/model)", contents) is None
+    assert not re.search(r"(?<=COPY )(.*)(?=model_dir)", contents) is None
     contents = re.sub(
-        r"(?<=COPY )(.*)(?= /opt/ml/model)", f"{output_directory}/model_dir", contents
+        r"(?<=COPY )(.*)(?=model_dir)", f"{output_directory}/", contents
     )
 
     env = jinja2.Environment(
