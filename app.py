@@ -1,5 +1,10 @@
 #! /usr/bin/env python3
 
+"""
+This module operates as a standalone executable which offers a command line 
+interface for converting MLFlow models into ROS packages and containerises with Docker.
+"""
+
 import dataclasses
 import json
 import os
@@ -22,6 +27,8 @@ app = typer.Typer()
 
 @dataclasses.dataclass
 class Msg:
+    """Dataclass to store info that will be inserted into a ROS message"""
+
     type: str
     name: str
     shape: str
@@ -29,11 +36,14 @@ class Msg:
 
 @dataclasses.dataclass
 class Srv:
+    """Dataclass to store info that will be inserted into a ROS service"""
+
     request: Msg
     response: Msg
 
 
 def unpack_schema(sig, name):
+    """Reads a model signature dictionary and returns its corresponding ROS msg info"""
     sig = json.loads(sig)[0]
 
     if sig["type"] == "tensor":
@@ -51,16 +61,18 @@ def unpack_schema(sig, name):
 
 
 def filter_model_name(model_name):
-    # currently only removes dashes
+    """Removes invalid symbols from model names. Currently only removes dashes"""
     return model_name.replace("-", "_")
 
 
 def get_model_uri(model_name, model_ver):
+    """Retrieves the model uri from the tracking server"""
     client = mlflow.client.MlflowClient()
     return client.get_model_version_download_uri(model_name, model_ver)
 
 
 def gen_msg(env, model_name, model_ver, msgs_dir):
+    """Writes a ROS .srv file for a model"""
     # get model signature
     model_uri = get_model_uri(model_name, model_ver)
     sig = mlflow.models.get_model_info(model_uri).signature.to_dict()
@@ -81,6 +93,7 @@ def gen_msg(env, model_name, model_ver, msgs_dir):
 
 
 def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
+    """Writes a ROS node executable based off a model"""
     clean_name = filter_model_name(model_name)
 
     render_data = dataclasses.asdict(srv)
@@ -93,6 +106,7 @@ def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
 
 
 def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
+    """Creates the ROS package around the node executable and message files"""
     clean_name = filter_model_name(model_name)
 
     # pairs of (<template name>, <output path>)
@@ -113,6 +127,8 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
 
 
 def edit_dockerfile(model_name, output_directory, rospkg_directory):
+    """Changes the MLFLow generated dockerfile such that ROS and the
+        ROS package files are installed"""
     path = Path(output_directory) / "Dockerfile"
     contents = path.read_text()
 
