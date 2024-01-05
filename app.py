@@ -120,10 +120,13 @@ def edit_dockerfile(model_name, output_directory, rospkg_directory):
     os.rename(path, path.parent / "mlflow_base.dockerfile")
 
     # Add `as base` to the initial build stage
+    assert(not re.search("FROM ubuntu:20.04", contents) is None) 
     contents = re.sub("FROM ubuntu:20.04", "FROM ubuntu:20.04 as base", contents)
     # Remove the entrypoint command in the dockerfile as we will define a new one later
+    assert(not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None)
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
     # Edit the COPY command to work with our build context
+    assert(not re.search(r"(?<=COPY )(.*)(?= /opt/ml/model)", contents) is None)
     contents = re.sub(r"(?<=COPY )(.*)(?= /opt/ml/model)", f"{output_directory}/model_dir", contents)
 
     env = jinja2.Environment(
