@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import functools
-import mlflow
-import rospy
-import numpy as np
 
+import mlflow
+import numpy as np
+import rospy
 from {{ msg_pkg }} import srv
+
 
 def message_interface(request, model):
     """Converts the inputs and outputs to and from ROS messages respectively"""
