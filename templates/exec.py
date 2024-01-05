@@ -3,10 +3,10 @@
 import functools
 
 import mlflow
-import rospy
 import numpy as np
-
+import rospy
 from {{ msg_pkg }} import srv
+
 
 def message_interface(request, model):
     """Converts the inputs and outputs to and from ROS messages respectively"""
@@ -15,13 +15,9 @@ def message_interface(request, model):
     data = np.array(request.{{ request.name }})
 
     # reshape request if necessary
-    {# the -% denote trim symbols #}
+    {# the %- denote trim symbols #}
     {%- if request.shape|length > 0 -%}
-        data = data.reshape(
-            {%- for shape in request.shape -%}
-                {{ shape }}{{ ", " if not loop.last else "" }}
-            {%- endfor -%}
-        )
+        data = data.reshape({{ request.shape }})
     {%- endif %}
 
     # Use the model to make the prediction
