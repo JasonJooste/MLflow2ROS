@@ -1,8 +1,8 @@
+#! /usr/bin/env python3
+
 import json
 import subprocess
 from dataclasses import asdict, dataclass
-from os import getcwd
-from os.path import dirname, join, realpath
 from pathlib import Path
 from typing import Optional
 
@@ -13,13 +13,7 @@ import typer
 from typing_extensions import Annotated
 
 # Dict to convert tensor data types (i.e. numpy) to ROS data types
-# TODO: Finish filling out with:
-# - https://numpy.org/devdocs/user/basics.types.html
-# - http://wiki.ros.org/msg
 TENSOR_TO_ROS = {"float64": "float64", "int64": "int64"}
-
-# absolute path to the location of this script
-__location__ = realpath(join(getcwd(), dirname(__file__)))
 
 app = typer.Typer()
 
@@ -44,7 +38,6 @@ def unpack_schema(sig, name):
         ros_dtype = TENSOR_TO_ROS[sig["tensor-spec"]["dtype"]]
         shape = sig["tensor-spec"]["shape"]
 
-    # TODO: fixed size cases
     return Msg(ros_dtype + "[]", name, shape)
 
 
@@ -67,16 +60,13 @@ def gen_msg(env, model_name, model_ver, msgs_dir):
 
     req_msg_name = clean_name + "_req"
     res_msg_name = clean_name + "_res"
-
     req = unpack_schema(sig["inputs"], req_msg_name)
     res = unpack_schema(sig["outputs"], res_msg_name)
-
     service = Srv(req, res)
 
     template = env.get_template("service.srv")
-
-    with open(join(msgs_dir, "srv", f"{clean_name}.srv"), "w", encoding="UTF-8") as f:
-        f.write(template.render(asdict(service)))
+    target_file = msgs_dir/"srv"/f"{clean_name}.srv"
+    target_file.write_text(template.render(asdict(service)))
 
     return service
 
@@ -88,10 +78,9 @@ def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
     render_data["model_name"] = clean_name
     render_data["msg_pkg"] = msg_pkg
 
-    template = env.get_template("exec")
-
-    with open(join(exec_dir, "scripts", clean_name), "w", encoding="UTF-8") as f:
-        f.write(template.render(render_data))
+    template = env.get_template("exec.py")
+    target_file = exec_dir/"scripts"/f"{clean_name}.py"
+    target_file.write_text(template.render(render_data))
 
 
 def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
@@ -99,21 +88,17 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
 
     # pairs of (<template name>, <output path>)
     files = (
-        ("msgs_cmake_template.txt", join(msg_dir, "CMakeLists.txt")),
-        ("msgs_package_template.xml", join(msg_dir, "package.xml")),
-        ("exec_cmake_template.txt", join(exec_dir, "CMakeLists.txt")),
-        ("exec_package_template.xml", join(exec_dir, "package.xml")),
-        (
-            "exec_launch_template.launch",
-            join(exec_dir, "launch", f"{clean_name}.launch"),
-        ),
+        ("msgs_cmake_template.txt", msg_dir/"CMakeLists.txt"),
+        ("msgs_package_template.xml", msg_dir/"package.xml"),
+        ("exec_cmake_template.txt", exec_dir/"CMakeLists.txt"),
+        ("exec_package_template.xml", exec_dir/"package.xml"),
+        ("exec_launch_template.launch", exec_dir/"launch"/f"{clean_name}.launch"),
     )
 
     render_data = {"model_name": clean_name, "msg_pkg": msg_pkg}
 
     for template_name, output_path in files:
         template = env.get_template(template_name)
-
         with open(output_path, "w", encoding="UTF-8") as f:
             f.write(template.render(render_data))
 
@@ -138,7 +123,8 @@ def generate_dockerfile(
     ] = "dockerfile",
 ):
     """
-    Creates the Dockerfile used to build the image containing the model and its ROS package.
+    Creates the Dockerfile used to build the image containing the model and its ROS package. 
+    The model is downloaded from the MLFLow model registry as part of the process.  
     """
     # get mlflow to generate their docker image
     subprocess.run(
@@ -155,12 +141,14 @@ def generate_dockerfile(
         text=True,
     )
 
-    with open(join(output_directory, "Dockerfile"), "r", encoding="UTF-8") as reader:
-        dockerfile = reader.readlines()
+    dfile_path = Path(output_directory)/"Dockerfile"
 
-    with open(join(output_directory, "Dockerfile"), "w", encoding="UTF-8") as writer:
+    with open(Path(output_directory)/"Dockerfile", "r", encoding="UTF-8") as reader:
+        dfile_contents = reader.readlines()
+
+    with open(dfile_path, "w", encoding="UTF-8") as writer:
         # edit mlflow dockerfile
-        for line in dockerfile:
+        for line in dfile_contents:
             if "FROM ubuntu" in line:
                 # Add `as base` to the initial build stage
                 line = line.rstrip() + " as base\n"
@@ -175,7 +163,7 @@ def generate_dockerfile(
 
         # add dockerfile addendum
         env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(searchpath=join(__location__, "templates")),
+            loader=jinja2.FileSystemLoader(searchpath=Path.cwd()/"templates"),
             autoescape=jinja2.select_autoescape,
             undefined=jinja2.StrictUndefined,
         )
@@ -208,21 +196,20 @@ def generate_rospkg(
     Creates the source files for the model's ROS node and message files.
     """
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=join(__location__, "templates")),
+        loader=jinja2.FileSystemLoader(searchpath=Path.cwd()/"templates"),
         autoescape=jinja2.select_autoescape,
         undefined=jinja2.StrictUndefined,
     )
 
     clean_name = filter_model_name(model_name)
     msg_pkg = clean_name + "_msgs"
-
-    exec_dir = join(__location__, output_directory, clean_name)
-    msgs_dir = join(__location__, output_directory, msg_pkg)
+    exec_dir = Path.cwd()/output_directory/clean_name
+    msgs_dir = Path.cwd()/output_directory/msg_pkg
 
     # create directories
-    Path(join(exec_dir, "launch")).mkdir(parents=True, exist_ok=True)
-    Path(join(exec_dir, "scripts")).mkdir(parents=True, exist_ok=True)
-    Path(join(msgs_dir, "srv")).mkdir(parents=True, exist_ok=True)
+    Path(exec_dir/"launch").mkdir(parents=True, exist_ok=True)
+    Path(exec_dir/"scripts").mkdir(parents=True, exist_ok=True)
+    Path(msgs_dir/"srv").mkdir(parents=True, exist_ok=True)
 
     srv = gen_msg(env, model_name, model_ver, msgs_dir)
     gen_exec(env, model_name, msg_pkg, srv, exec_dir)
@@ -255,15 +242,13 @@ def make_image(
         "docker",
         "build",
         "--file",
-        join(__location__, "dockerfile", "Dockerfile"),
+        str(Path.cwd()/"dockerfile"/"Dockerfile"),
         "--target",
         "prod",
     ]
-
     if not tag is None:
         cmd = cmd + ["--tag", tag]
-
-    cmd.append(__location__)
+    cmd.append(str(Path.cwd()))
 
     rich.print(f"Running command: '{' '.join(cmd)}'")
 

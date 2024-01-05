@@ -8,4 +8,4 @@ This repository contains the source code of the ROS node generator for MLFLow mo
 4. `pip install -r requirements.txt` to install the requirements in the current environment
 
 ### Using the CLI
-Run `python app.py --help` to get started
+Run `./app.py --help` to get started
