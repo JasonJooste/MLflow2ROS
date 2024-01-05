@@ -2,7 +2,7 @@
 
 import json
 import subprocess
-from dataclasses import asdict, dataclass
+import dataclasses
 from pathlib import Path
 from typing import Optional
 
@@ -18,14 +18,14 @@ TENSOR_TO_ROS = {"float64": "float64", "int64": "int64"}
 app = typer.Typer()
 
 
-@dataclass
+@dataclasses.dataclass
 class Msg:
     type: str
     name: str
     shape: str
 
 
-@dataclass
+@dataclasses.dataclass
 class Srv:
     request: Msg
     response: Msg
@@ -37,6 +37,13 @@ def unpack_schema(sig, name):
     if sig["type"] == "tensor":
         ros_dtype = TENSOR_TO_ROS[sig["tensor-spec"]["dtype"]]
         shape = sig["tensor-spec"]["shape"]
+    elif sig["type"] == "dataframe":
+        raise NotImplementedError("Model signature type `dataframe` is not supported")
+    elif sig["type"] == "column":
+        raise NotImplementedError("Model signature type `column` is not supported")
+    
+    if "params" in sig:
+        raise NotImplementedError("Model signature with parameters is not supported")
 
     return Msg(ros_dtype + "[]", name, shape)
 
@@ -66,7 +73,7 @@ def gen_msg(env, model_name, model_ver, msgs_dir):
 
     template = env.get_template("service.srv")
     target_file = msgs_dir/"srv"/f"{clean_name}.srv"
-    target_file.write_text(template.render(asdict(service)))
+    target_file.write_text(template.render(dataclasses.asdict(service)))
 
     return service
 
@@ -74,7 +81,7 @@ def gen_msg(env, model_name, model_ver, msgs_dir):
 def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
     clean_name = filter_model_name(model_name)
 
-    render_data = asdict(srv)
+    render_data = dataclasses.asdict(srv)
     render_data["model_name"] = clean_name
     render_data["msg_pkg"] = msg_pkg
 
