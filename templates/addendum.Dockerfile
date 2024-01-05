@@ -24,14 +24,11 @@ RUN echo "source /opt/ros/{{ ros_distro }}/setup.bash" >> /root/.bashrc \
   && echo 'fi' >> /root/.bashrc
 
 FROM base as dev
-
 RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
 
 # Build the model's ROS node and install it on the image 
 FROM base as build
-
 RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
-
 COPY {{ rospkg_dir }} src
 
 # Build ROS packages 
@@ -39,7 +36,6 @@ RUN . /opt/ros/{{ ros_distro }}/setup.sh && \
     colcon build --event-handlers console_cohesion+ status-
 
 FROM base as prod
-
 COPY --from=build /workspace/install install
 
 # create entrypoint script that runs the ros node

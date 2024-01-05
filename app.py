@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 
-import json
-import subprocess
 import dataclasses
+import json
+import os
+import re
+import subprocess
 from pathlib import Path
 from typing import Optional
-import re
-import os
 
 import jinja2
 import mlflow
@@ -43,7 +43,7 @@ def unpack_schema(sig, name):
         raise NotImplementedError("Model signature type `dataframe` is not supported")
     elif sig["type"] == "column":
         raise NotImplementedError("Model signature type `column` is not supported")
-    
+
     if "params" in sig:
         raise NotImplementedError("Model signature with parameters is not supported")
 
@@ -74,7 +74,7 @@ def gen_msg(env, model_name, model_ver, msgs_dir):
     service = Srv(req, res)
 
     template = env.get_template("service.srv")
-    target_file = msgs_dir/"srv"/f"{clean_name}.srv"
+    target_file = msgs_dir / "srv" / f"{clean_name}.srv"
     target_file.write_text(template.render(dataclasses.asdict(service)))
 
     return service
@@ -88,7 +88,7 @@ def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
     render_data["msg_pkg"] = msg_pkg
 
     template = env.get_template("exec.py")
-    target_file = exec_dir/"scripts"/f"{clean_name}.py"
+    target_file = exec_dir / "scripts" / f"{clean_name}.py"
     target_file.write_text(template.render(render_data))
 
 
@@ -97,11 +97,11 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
 
     # pairs of (<template name>, <output path>)
     files = (
-        ("msgs_cmake_template.txt", msg_dir/"CMakeLists.txt"),
-        ("msgs_package_template.xml", msg_dir/"package.xml"),
-        ("exec_cmake_template.txt", exec_dir/"CMakeLists.txt"),
-        ("exec_package_template.xml", exec_dir/"package.xml"),
-        ("exec_launch_template.launch", exec_dir/"launch"/f"{clean_name}.launch"),
+        ("msgs_cmake_template.txt", msg_dir / "CMakeLists.txt"),
+        ("msgs_package_template.xml", msg_dir / "package.xml"),
+        ("exec_cmake_template.txt", exec_dir / "CMakeLists.txt"),
+        ("exec_package_template.xml", exec_dir / "package.xml"),
+        ("exec_launch_template.launch", exec_dir / "launch" / f"{clean_name}.launch"),
     )
 
     render_data = {"model_name": clean_name, "msg_pkg": msg_pkg}
@@ -113,27 +113,29 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
 
 
 def edit_dockerfile(model_name, output_directory, rospkg_directory):
-    path = Path(output_directory)/"Dockerfile"
+    path = Path(output_directory) / "Dockerfile"
     contents = path.read_text()
 
-    # rename mlflow generated Dockerfile 
+    # rename mlflow generated Dockerfile
     os.rename(path, path.parent / "mlflow_base.dockerfile")
 
     # Add `as base` to the initial build stage
-    assert(not re.search("FROM ubuntu:20.04", contents) is None) 
+    assert not re.search("FROM ubuntu:20.04", contents) is None
     contents = re.sub("FROM ubuntu:20.04", "FROM ubuntu:20.04 as base", contents)
     # Remove the entrypoint command in the dockerfile as we will define a new one later
-    assert(not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None)
+    assert not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
     # Edit the COPY command to work with our build context
-    assert(not re.search(r"(?<=COPY )(.*)(?= /opt/ml/model)", contents) is None)
-    contents = re.sub(r"(?<=COPY )(.*)(?= /opt/ml/model)", f"{output_directory}/model_dir", contents)
+    assert not re.search(r"(?<=COPY )(.*)(?= /opt/ml/model)", contents) is None
+    contents = re.sub(
+        r"(?<=COPY )(.*)(?= /opt/ml/model)", f"{output_directory}/model_dir", contents
+    )
 
     env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(searchpath=Path.cwd()/"templates"),
-            autoescape=jinja2.select_autoescape,
-            undefined=jinja2.StrictUndefined,
-        )
+        loader=jinja2.FileSystemLoader(searchpath=Path.cwd() / "templates"),
+        autoescape=jinja2.select_autoescape,
+        undefined=jinja2.StrictUndefined,
+    )
 
     render_data = {
         "ubuntu_distro": "focal",
@@ -155,7 +157,9 @@ def generate_dockerfile(
     ],
     model_ver: Annotated[
         int,
-        typer.Argument(help="Version of the model as listed on the MLFlow Model Registry"),
+        typer.Argument(
+            help="Version of the model as listed on the MLFlow Model Registry"
+        ),
     ],
     rospkg_directory: Annotated[
         Optional[str],
@@ -168,8 +172,8 @@ def generate_dockerfile(
     ] = "dockerfile",
 ):
     """
-    Creates the Dockerfile used to build the image containing the model and its ROS package. 
-    The model is downloaded from the MLFLow model registry as part of the process.  
+    Creates the Dockerfile used to build the image containing the model and its ROS package.
+    The model is downloaded from the MLFLow model registry as part of the process.
     """
     # get mlflow to generate their docker image
     subprocess.run(
@@ -196,7 +200,9 @@ def generate_rospkg(
     ],
     model_ver: Annotated[
         int,
-        typer.Argument(help="Version of the model as listed on the MLFlow Model Registry"),
+        typer.Argument(
+            help="Version of the model as listed on the MLFlow Model Registry"
+        ),
     ],
     output_directory: Annotated[
         Optional[str], typer.Option(help="Folder containing the generated files")
@@ -206,20 +212,20 @@ def generate_rospkg(
     Creates the source files for the model's ROS node and message files.
     """
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=Path.cwd()/"templates"),
+        loader=jinja2.FileSystemLoader(searchpath=Path.cwd() / "templates"),
         autoescape=jinja2.select_autoescape,
         undefined=jinja2.StrictUndefined,
     )
 
     clean_name = filter_model_name(model_name)
     msg_pkg = clean_name + "_msgs"
-    exec_dir = Path.cwd()/output_directory/clean_name
-    msgs_dir = Path.cwd()/output_directory/msg_pkg
+    exec_dir = Path.cwd() / output_directory / clean_name
+    msgs_dir = Path.cwd() / output_directory / msg_pkg
 
     # create directories
-    Path(exec_dir/"launch").mkdir(parents=True, exist_ok=True)
-    Path(exec_dir/"scripts").mkdir(parents=True, exist_ok=True)
-    Path(msgs_dir/"srv").mkdir(parents=True, exist_ok=True)
+    Path(exec_dir / "launch").mkdir(parents=True, exist_ok=True)
+    Path(exec_dir / "scripts").mkdir(parents=True, exist_ok=True)
+    Path(msgs_dir / "srv").mkdir(parents=True, exist_ok=True)
 
     srv = gen_msg(env, model_name, model_ver, msgs_dir)
     gen_exec(env, model_name, msg_pkg, srv, exec_dir)
@@ -235,14 +241,17 @@ def make_image(
     ],
     model_ver: Annotated[
         int,
-        typer.Argument(help="Version of the model as listed on the MLFlow Model Registry"),
+        typer.Argument(
+            help="Version of the model as listed on the MLFlow Model Registry"
+        ),
     ],
     tag: Annotated[
         Optional[str], typer.Option(help="Name of the generated image")
     ] = None,
 ):
     """
-    Builds a Docker image containing the generated ROS node.
+    Builds a Docker image containing the ROS node for the model.
+    The model is downloaded locally in the process.
     """
     generate_dockerfile(model_name, model_ver)
     generate_rospkg(model_name, model_ver)
@@ -252,7 +261,7 @@ def make_image(
         "docker",
         "build",
         "--file",
-        str(Path.cwd()/"dockerfile"/"Dockerfile"),
+        str(Path.cwd() / "dockerfile" / "Dockerfile"),
         "--target",
         "prod",
     ]
