@@ -233,7 +233,7 @@ def generate_dockerfile(
     """
     if rospkg_directory == "rospkg" and not Path("rospkg").is_dir():
         # rospkg doesn't exist, create it
-        generate_rospkg(model_name, model_ver)
+        generate_rospkg(model_name, model_ver, output_directory)
 
     # get mlflow to generate their docker image
     subprocess.run(
