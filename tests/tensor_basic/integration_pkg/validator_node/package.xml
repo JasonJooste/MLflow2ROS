@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+
+  <name>validator</name>
+  <version>0.1.0</version>
+  <description>TODO</description>
+
+  <maintainer email="jane.doe@example.com">Jane Doe</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>tensor_basic_msgs</depend>
+  <depend>tf</depend>
+
+</package>
