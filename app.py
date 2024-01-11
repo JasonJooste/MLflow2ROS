@@ -31,7 +31,7 @@ class Msg:
 
     type: str
     name: str
-    shape: str
+    shape: list
 
 
 @dataclasses.dataclass
@@ -71,19 +71,27 @@ def get_model_uri(model_name, model_ver):
     return client.get_model_version_download_uri(model_name, model_ver)
 
 
+def sig_to_srv(model_name, sig_dict):
+    """
+    Converts the types from a signature dict to ROS msg/srv types 
+    The signature dictionary is the signature section of hte MLmodel file, except
+    represented as a dictionary. 
+    See https://mlflow.org/docs/latest/models.html#model-signature-types  
+    """
+    req_msg_name = model_name + "_req"
+    res_msg_name = model_name + "_res"
+    req = unpack_schema(sig_dict["inputs"], req_msg_name)
+    res = unpack_schema(sig_dict["outputs"], res_msg_name)
+    return Srv(req, res)
+
+
 def gen_msg(env, model_name, model_ver, msgs_dir):
     """Writes a ROS .srv file for a model"""
     # get model signature
     model_uri = get_model_uri(model_name, model_ver)
     sig = mlflow.models.get_model_info(model_uri).signature.to_dict()
-
     clean_name = filter_model_name(model_name)
-
-    req_msg_name = clean_name + "_req"
-    res_msg_name = clean_name + "_res"
-    req = unpack_schema(sig["inputs"], req_msg_name)
-    res = unpack_schema(sig["outputs"], res_msg_name)
-    service = Srv(req, res)
+    service = sig_to_srv(clean_name, sig)
 
     template = env.get_template("service.srv")
     target_file = msgs_dir / "srv" / f"{clean_name}.srv"
@@ -231,9 +239,9 @@ def generate_dockerfile(
     The model is downloaded from the MLFLow model registry as part of the process.
     WARNING: the image will NOT build if `--rospkg-directory` does not lead to a valid ROS package.
     """
-    if rospkg_directory == "rospkg" and not Path("rospkg").is_dir():
-        # rospkg doesn't exist, create it
-        generate_rospkg(model_name, model_ver, output_directory)
+    if rospkg_directory == "rospkg":
+        # custom rospkg not provided, create our own
+        generate_rospkg(model_name, model_ver)
 
     # get mlflow to generate their docker image
     subprocess.run(
@@ -250,6 +258,7 @@ def generate_dockerfile(
         text=True,
     )
 
+    # edit mlflow's dockerfile
     edit_dockerfile(model_name, output_directory, rospkg_directory)
 
 
