@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+
+import rospy
+
+import tensor_basic_msgs.srv
+
+import pandas as pd
+import unittest
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+
+## A sample python unit test
+class TestTensorBasic(unittest.TestCase):
+  def setUp(self):
+    rospy.init_node("test_tensor_basic")
+
+  def test_correct_response(self):
+    # Load the Iris dataset
+    X, y = datasets.load_iris(return_X_y=True)
+
+    # Split the data into training and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    req = tensor_basic_msgs.srv.tensor_basicRequest(X_test.ravel())
+
+    print("waiting for service")
+    rospy.wait_for_service('tensor_basic_service')
+
+    logreg = rospy.ServiceProxy('tensor_basic_service', tensor_basic_msgs.srv.tensor_basic)
+    try:
+      predictions = logreg(req).tensor_basic_res
+    except rospy.ServiceException as exc:
+      print("Service did not process request: " + str(exc))
+
+    iris_feature_names = datasets.load_iris().feature_names
+
+    # Convert X_test validation feature data to a Pandas DataFrame
+    result = pd.DataFrame(X_test, columns=iris_feature_names)
+
+    expected = [1, 0, 2, 1, 1, 0, 1, 2, 1, 1, 2, 0, 0, 0, 0, 1, 2, 1, 1, 2, 0, 2, 0, 2, 2, 2, 2, 2, 0, 0]
+
+    self.assertEquals(result, expected, "huuuuhhhhhhh")
+
+
+if __name__ == "__main__":
+  import rostest
+  rostest.rosrun('ml2ros_test', 'tensor_basic', TestTensorBasic)
