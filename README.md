@@ -9,3 +9,7 @@ This repository contains the source code of the ROS node generator for MLFLow mo
 
 ### Using the CLI
 Run `./app.py --help` to get started
+
+
+### Running unit tests
+`python -m pytest`
