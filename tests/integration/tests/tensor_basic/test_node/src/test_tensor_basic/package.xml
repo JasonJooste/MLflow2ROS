@@ -1,12 +1,10 @@
 <?xml version="1.0"?>
 <package format="3">
 
-  <name>validator</name>
+  <name>test_tensor_basic</name>
   <version>0.1.0</version>
-  <description>TODO</description>
-
-  <maintainer email="jane.doe@example.com">Jane Doe</maintainer>
-
+  <description>The docker model integration testing package</description>
+  <maintainer email="zhirong.lin@data61.csiro.au">Leo Lin</maintainer>
   <license>TODO</license>
 
   <buildtool_depend>catkin</buildtool_depend>
