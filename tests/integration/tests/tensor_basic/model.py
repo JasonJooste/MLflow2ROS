@@ -7,17 +7,25 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
+
 def run():
-    mlflow.set_tracking_uri(uri="http://127.0.0.1:8080")
+    print("Starting model")
 
     # Load the Iris dataset
     X, y = datasets.load_iris(return_X_y=True)
 
     # Split the data into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
     # Define the model hyperparameters
-    params = {"solver": "lbfgs", "max_iter": 1000, "multi_class": "auto", "random_state": 8888}
+    params = {
+        "solver": "lbfgs",
+        "max_iter": 1000,
+        "multi_class": "auto",
+        "random_state": 8888,
+    }
 
     # Train the model
     lr = LogisticRegression(**params)
@@ -29,12 +37,12 @@ def run():
     # Calculate accuracy as a target loss metric
     accuracy = accuracy_score(y_test, y_pred)
 
-
     mlflow.set_experiment("MLflow Quickstart")
-
 
     # Start an MLflow run
     with mlflow.start_run():
+        print("Running model")
+
         # Log the hyperparameters
         mlflow.log_params(params)
 
@@ -53,22 +61,11 @@ def run():
             artifact_path="iris_model",
             signature=signature,
             input_example=X_train,
-            registered_model_name="tensor-basic",
+            registered_model_name="tensor_basic",
         )
 
-        loaded_model = mlflow.pyfunc.load_model(model_info.model_uri)
+        print("Logged model")
 
-        predictions = loaded_model.predict(X_test)
-            
-        iris_feature_names = datasets.load_iris().feature_names
 
-        # Convert X_test validation feature data to a Pandas DataFrame
-        result = pd.DataFrame(X_test, columns=iris_feature_names)
-
-        # Add the actual classes to the DataFrame
-        result["actual_class"] = y_test
-
-        # Add the model predictions to the DataFrame
-        result["predicted_class"] = predictions
-
-        print(result[:4])
+if __name__ == "__main__":
+    run()

@@ -1,1 +1,0 @@
-Run tests with "python -m pytest" in the parent dir
