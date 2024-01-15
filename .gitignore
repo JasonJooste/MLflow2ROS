@@ -10,5 +10,4 @@ mlruns/
 dockerfile/
 rospkg/
 venv/
-artifacts/
 __pycache__/
