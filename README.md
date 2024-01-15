@@ -11,5 +11,7 @@ This repository contains the source code of the ROS node generator for MLFLow mo
 Run `./app.py --help` to get started
 
 
-### Running unit tests
-`python -m pytest`
+### Running tests
+Unit test: `python -m pytest`
+
+Integration test: `python integration_test.py`
