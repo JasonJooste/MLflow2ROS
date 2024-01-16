@@ -20,7 +20,21 @@ import typer
 from typing_extensions import Annotated
 
 # Dict to convert tensor data types (i.e. numpy) to ROS data types
-TENSOR_TO_ROS = {"float64": "float64", "int64": "int64"}
+TENSOR_TO_ROS = {
+    "bool": "bool",
+    "int8": "int8",
+    "uint8": "uint8",
+    "int16": "int16",
+    "uint16": "uint16",
+    "int32": "int32",
+    "uint32": "uint32",
+    "int64": "int64",
+    "uint64": "uint64",
+    "intp": "int64",
+    "uintp": "uint64",
+    "float16": "float32",
+    "float32": "float32",
+    "float64": "float64"}
 
 app = typer.Typer()
 
