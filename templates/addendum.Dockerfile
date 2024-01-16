@@ -4,15 +4,15 @@
 # Disable any interactive prompts
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Set up keys
-RUN apt-get install -y gnupg
-RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
+# # Set up keys
+# RUN apt-get install -y gnupg1
+# RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
 
-# Setup sources.list
-RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu /{{ ubuntu_distro }} main" > /etc/apt/sources.list.d/ros-latest.list'
+# # Setup sources.list
+# RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu /{{ ubuntu_distro }} main" > /etc/apt/sources.list.d/ros-latest.list'
 
-# Install ROS
-RUN apt-get update && apt-get install -y ros-{{ ros_distro }}-ros-base
+# # Install ROS
+# RUN apt-get update && apt-get install -y ros-{{ ros_distro }}-ros-base
 
 # Create script that activates the mlflow conda env or virtual env, depending on what got installed
 RUN echo 'if [ -e /miniconda/bin/activate ]; then' >> /activate_mlflow_env.bash \
@@ -39,17 +39,16 @@ WORKDIR /workspace
 FROM base as dev
 # Add ROS source commands to .bashrc for convenience 
 RUN echo 'source /activate_ros_env.bash' >> /root/.bashrc
-
-RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
+RUN apt-get update && apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
 
 # Build the model's ROS node and install it on the image 
 FROM base as build
-RUN apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
+RUN apt-get update && apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
 COPY {{ rospkg_dir }} src
 
 # Build ROS packages 
 RUN . /opt/ros/{{ ros_distro }}/setup.sh && \
-    colcon build --event-handlers console_cohesion+ status-
+    colcon build --event-handlers console_cohesion+ status- --cmake-args -DPYTHON_EXECUTABLE=/usr/bin/python3 
 
 FROM base as prod
 COPY --from=build /workspace/install install
