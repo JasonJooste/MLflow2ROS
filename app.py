@@ -159,7 +159,7 @@ def edit_dockerfile(model_name, output_directory, rospkg_directory):
 
     # Add `as base` to the initial build stage
     assert not re.search("FROM ubuntu:20.04", contents) is None
-    contents = re.sub("FROM ubuntu:20.04", "FROM ubuntu:20.04 as base", contents)
+    contents = re.sub("FROM ubuntu:20.04", "FROM ros:noetic as base", contents)
     # Remove the entrypoint command in the dockerfile as we will define a new one later
     assert not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
@@ -247,6 +247,9 @@ def generate_dockerfile(
     output_directory: Annotated[
         Optional[str], typer.Option(help="Folder containing the generated files")
     ] = "dockerfile",
+    env_manager: Annotated[
+        Optional[str], typer.Option(help="The environment manager that will be used to install model dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'")
+    ] = "virtualenv",
 ):
     """
     Creates the Dockerfile used to build the image containing the model and its ROS package.
@@ -267,6 +270,8 @@ def generate_dockerfile(
             get_model_uri(model_name, model_ver),
             "--output-directory",
             output_directory,
+            "--env-manager",
+            env_manager
         ],
         check=True,
         text=True,
@@ -290,12 +295,15 @@ def make_image(
     tag: Annotated[
         Optional[str], typer.Option(help="Name of the generated image")
     ] = None,
+    env_manager: Annotated[
+        Optional[str], typer.Option(help="The environment manager that will be used to install model dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'")
+    ] = "virtualenv",
 ):
     """
     Builds a Docker image containing the ROS node for the model.
     The model is downloaded locally in the process.
     """
-    generate_dockerfile(model_name, model_ver)
+    generate_dockerfile(model_name, model_ver, env_manager=env_manager)
 
     # create docker build command
     cmd = [
