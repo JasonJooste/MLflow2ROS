@@ -43,9 +43,10 @@ app = typer.Typer()
 class Msg:
     """Dataclass to store info that will be inserted into a ROS message"""
 
-    type: str
+    ros_dtype: str
     name: str
     shape: list
+    base_dtype: str
 
 
 @dataclasses.dataclass
@@ -71,7 +72,7 @@ def unpack_schema(sig, name):
     if "params" in sig:
         raise NotImplementedError("Model signature with parameters is not supported")
 
-    return Msg(ros_dtype + "[]", name, shape)
+    return Msg(ros_dtype + "[]", name, shape, sig["tensor-spec"]["dtype"])
 
 
 def filter_model_name(model_name):
