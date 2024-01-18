@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16.3)
 
-project(test_tensor_basic)
+project(test_dgnss)
 
 find_package(catkin REQUIRED COMPONENTS rospy)
 
 catkin_package()
 
 catkin_install_python(
-  PROGRAMS scripts/test_tensor_basic
+  PROGRAMS scripts/test_dgnss
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
