@@ -6,8 +6,6 @@ from pathlib import Path
 import app
 import os
 
-client = docker.from_env()
-
 
 class IntegrationTest():
     def __init__(self):
@@ -17,11 +15,13 @@ class IntegrationTest():
             self.old_tracking_uri = os.environ["MLFLOW_TRACKING_URI"]
         os.environ["MLFLOW_TRACKING_URI"] = "http://127.0.0.1:55555"
 
+        self.client = docker.from_env()
+
         print("Spinning up test containers")
         # launch mlflow server image and roscore image
-        mlflow_server = client.containers.run("ghcr.io/mlflow/mlflow:v2.9.2", "mlflow server --host 127.0.0.1 --port 55555", 
+        mlflow_server = self.client.containers.run("ghcr.io/mlflow/mlflow:v2.9.2", "mlflow server --host 127.0.0.1 --port 55555", 
                             network="host", detach=True, auto_remove=True)
-        roscore = client.containers.run("ros:noetic", "roscore", 
+        roscore = self.client.containers.run("ros:noetic", "roscore", 
                             network="host", detach=True, auto_remove=True)
         
         self.used_containers = [mlflow_server, roscore]
@@ -29,13 +29,14 @@ class IntegrationTest():
 
     def test_all(self):
         tests = Path.cwd() / "tests" / "integration" / "tests"
+        # run all tests stored in integration/tests
         for test_path in tests.iterdir():
             test_name = test_path.name
             model_img_name = f"{test_name}_model"
             test_img_name = f"{test_name}_test"
 
             print("Building test node image")
-            client.images.build(path=str(test_path / "test_node"), tag=test_img_name, quiet=False)
+            self.client.images.build(path=str(test_path / "test_node"), tag=test_img_name, quiet=False)
 
             # log the model
             subprocess.run(
@@ -48,7 +49,7 @@ class IntegrationTest():
             app.make_image(model_name=test_path.name, model_ver=1, tag=model_img_name)
 
             print("Starting model container")
-            model = client.containers.run(model_img_name, network="host", detach=True, auto_remove=True)
+            model = self.client.containers.run(model_img_name, network="host", detach=True, auto_remove=True)
 
             print("Starting test container")
             try:
