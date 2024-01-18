@@ -27,12 +27,10 @@ def main():
     except rospy.ServiceException as exc:
         print("Service did not process request: " + str(exc))
 
-    print("Received response")
+    print("Received response: ")
     print(predictions)
 
     rospy.spin()
 
 if __name__ == "__main__":
     main()
-
-# source /activate_ros_env.bash  && source /activate_mlflow_env.bash && rosrun test_dgnss test_dgnss
