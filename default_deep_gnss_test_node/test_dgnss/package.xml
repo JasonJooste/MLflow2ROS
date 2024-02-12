@@ -9,7 +9,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>deep_gnss_test_msgs</depend>
+  <depend>chee_deep_gnss_msgs</depend>
   <depend>tf</depend>
 
 </package>
