@@ -34,7 +34,8 @@ TENSOR_TO_ROS = {
     "uintp": "uint64",
     "float16": "float32",
     "float32": "float32",
-    "float64": "float64"}
+    "float64": "float64",
+}
 
 app = typer.Typer()
 
@@ -88,10 +89,10 @@ def get_model_uri(model_name, model_ver):
 
 def sig_to_srv(model_name, sig_dict):
     """
-    Converts the types from a signature dict to ROS msg/srv types 
+    Converts the types from a signature dict to ROS msg/srv types
     The signature dictionary is the signature section of hte MLmodel file, except
-    represented as a dictionary. 
-    See https://mlflow.org/docs/latest/models.html#model-signature-types  
+    represented as a dictionary.
+    See https://mlflow.org/docs/latest/models.html#model-signature-types
     """
     req_msg_name = model_name + "_req"
     res_msg_name = model_name + "_res"
@@ -151,7 +152,7 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
 
 def edit_dockerfile(model_name, output_directory, rospkg_directory):
     """Changes the MLFLow generated dockerfile such that ROS and the
-        ROS package files are installed"""
+    ROS package files are installed"""
     path = Path(output_directory) / "Dockerfile"
     contents = path.read_text()
 
@@ -249,7 +250,11 @@ def generate_dockerfile(
         Optional[str], typer.Option(help="Folder containing the generated files")
     ] = "dockerfile",
     env_manager: Annotated[
-        Optional[str], typer.Option(help="The environment manager that will be used to install model dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'")
+        Optional[str],
+        typer.Option(
+            help="The environment manager that will be used to install model "
+            + "dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'"
+        ),
     ] = "virtualenv",
 ):
     """
@@ -272,7 +277,7 @@ def generate_dockerfile(
             "--output-directory",
             output_directory,
             "--env-manager",
-            env_manager
+            env_manager,
         ],
         check=True,
         text=True,
@@ -297,7 +302,11 @@ def make_image(
         Optional[str], typer.Option(help="Name of the generated image")
     ] = None,
     env_manager: Annotated[
-        Optional[str], typer.Option(help="The environment manager that will be used to install model dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'")
+        Optional[str],
+        typer.Option(
+            help="The environment manager that will be used to install model "
+            + "dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'"
+        ),
     ] = "virtualenv",
 ):
     """
