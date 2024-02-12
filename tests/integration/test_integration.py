@@ -37,10 +37,6 @@ def docker_client():
 def build_validator_container(scope="session", autouse=True):
     print("Building validator container")
 
-    print(str(Path.cwd()/"test_nodes"))
-    
-    # docker_client.images.build(path=str(Path.cwd()/"test_nodes"), tag=VALIDATOR_CONTAINER)
-
     subprocess.run(["docker", "build", "--tag", VALIDATOR_CONTAINER, Path.cwd()/"tests"/"integration"/"test_nodes"], check=True, text=True)
 
 
@@ -77,16 +73,12 @@ def test_tensor_basic(docker_client, mlflow_server_container, roscore_container,
     print("Starting validator container")
     try:
         # must use subprocess since the docker api doesn't print to stdout
-        cmd = ["docker", "run", "-i", "--network", "host", VALIDATOR_CONTAINER]
+        cmd = ["docker", "run", "--network", "host", VALIDATOR_CONTAINER, 
+               "rosrun", f"test_{test_name}", f"test_{test_name}"]
 
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
-                                stderr=subprocess.STDOUT, text=True)
-        print(proc.communicate(f"source ~/.bashrc && rosrun test_{test_name} test_{test_name}"))
-
-
+        subprocess.run(cmd, check=True, text=True)
     except:
         print("TESTS FAILED")
-        model.stop()
         assert False
-
-    model.stop()
+    finally:
+        model.stop()

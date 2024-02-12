@@ -70,9 +70,6 @@ class TestListElements(unittest.TestCase):
         )
 
         assert predictions == expected
-    
-    def test_false(self):
-        assert True == False
 
 
 if __name__ == "__main__":
