@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<launch>
-  <node name="test_dgnss" pkg="test_dgnss" />
-</launch>
