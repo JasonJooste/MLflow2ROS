@@ -12,7 +12,7 @@ def message_interface(request, model):
     """Converts the inputs and outputs to and from ROS messages respectively"""
 
     # Get raw data from the ROS request
-    data = np.array(request.{{ request.name }})
+    data = np.array(request.{{ request.name }}, dtype="{{ request.base_dtype }}")
 
     # reshape request if necessary
     {# the %- denote trim symbols #}
