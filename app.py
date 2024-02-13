@@ -150,10 +150,10 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
             f.write(template.render(render_data))
 
 
-def edit_dockerfile(model_name, output_directory, rospkg_directory):
+def edit_dockerfile(model_name, dockerfile_directory, rospkg_directory):
     """Changes the MLFLow generated dockerfile such that ROS and the
     ROS package files are installed"""
-    path = Path(output_directory) / "Dockerfile"
+    path = Path(dockerfile_directory) / "Dockerfile"
     contents = path.read_text()
 
     # rename mlflow generated Dockerfile
@@ -167,7 +167,7 @@ def edit_dockerfile(model_name, output_directory, rospkg_directory):
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
     # Edit the COPY command to work with our build context
     assert not re.search(r"(?<=COPY )(.*)(?=model_dir)", contents) is None
-    contents = re.sub(r"(?<=COPY )(.*)(?=model_dir)", f"{output_directory}/", contents)
+    contents = re.sub(r"(?<=COPY )(.*)(?=model_dir)", f"{dockerfile_directory}/", contents)
 
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(searchpath=Path.cwd() / "templates"),
@@ -245,10 +245,10 @@ def generate_dockerfile(
         typer.Option(
             help="Location of the ROS package that will be run on the Docker image"
         ),
-    ] = "rospkg",
+    ] = None,
     output_directory: Annotated[
         Optional[str], typer.Option(help="Folder containing the generated files")
-    ] = "dockerfile",
+    ] = "generated_files",
     env_manager: Annotated[
         Optional[str],
         typer.Option(
@@ -262,9 +262,12 @@ def generate_dockerfile(
     The model is downloaded from the MLFLow model registry as part of the process.
     WARNING: the image will NOT build if `--rospkg-directory` does not lead to a valid ROS package.
     """
-    if rospkg_directory == "rospkg":
+    dockerfile_dir = Path(output_directory) / "dockerfile"
+
+    if rospkg_directory == None:
+        rospkg_directory = Path(output_directory) / "rospkg"
         # custom rospkg not provided, create our own
-        generate_rospkg(model_name, model_ver)
+        generate_rospkg(model_name, model_ver, output_directory=rospkg_directory)
 
     # get mlflow to generate their docker image
     subprocess.run(
@@ -275,7 +278,7 @@ def generate_dockerfile(
             "--model-uri",
             get_model_uri(model_name, model_ver),
             "--output-directory",
-            output_directory,
+            dockerfile_dir,
             "--env-manager",
             env_manager,
         ],
@@ -284,7 +287,7 @@ def generate_dockerfile(
     )
 
     # edit mlflow's dockerfile
-    edit_dockerfile(model_name, output_directory, rospkg_directory)
+    edit_dockerfile(model_name, dockerfile_dir, rospkg_directory)
 
 
 @app.command()
@@ -301,6 +304,9 @@ def make_image(
     tag: Annotated[
         Optional[str], typer.Option(help="Name of the generated image")
     ] = None,
+    output_directory: Annotated[
+        Optional[str], typer.Option(help="Folder containing the generated files")
+    ] = "generated_files",
     env_manager: Annotated[
         Optional[str],
         typer.Option(
@@ -313,14 +319,14 @@ def make_image(
     Builds a Docker image containing the ROS node for the model.
     The model is downloaded locally in the process.
     """
-    generate_dockerfile(model_name, model_ver, env_manager=env_manager)
+    generate_dockerfile(model_name, model_ver, output_directory=output_directory, env_manager=env_manager)
 
     # create docker build command
     cmd = [
         "docker",
         "build",
         "--file",
-        str(Path.cwd() / "dockerfile" / "Dockerfile"),
+        str(Path.cwd() / output_directory / "dockerfile" / "Dockerfile"),
         "--target",
         "prod",
     ]
