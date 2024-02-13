@@ -47,6 +47,6 @@ COPY --from=build /workspace/install install
 RUN echo 'source /activate_ros_env.bash' >> /entrypoint.bash \
   && echo 'source /activate_mlflow_env.bash' >> /entrypoint.bash \
   # launch ROS node
-  && echo "rosrun {{ model_name }} {{ model_name }}" >> /entrypoint.bash
+  && echo "rosrun {{ model_name }} {{ model_name }}.py" >> /entrypoint.bash
 
 ENTRYPOINT ["/bin/bash", "/entrypoint.bash"]

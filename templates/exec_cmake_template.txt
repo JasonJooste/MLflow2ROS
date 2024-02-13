@@ -7,7 +7,7 @@ find_package(catkin REQUIRED COMPONENTS rospy)
 catkin_package()
 
 catkin_install_python(
-  PROGRAMS scripts/{{ model_name }}
+  PROGRAMS scripts/{{ model_name }}.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
