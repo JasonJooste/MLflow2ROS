@@ -9,3 +9,10 @@ This repository contains the source code of the ROS node generator for MLFLow mo
 
 ### Using the CLI
 Run `./app.py --help` to get started
+
+### Running tests
+Unit test: `python -m pytest`
+
+### Running containers with GPU
+Install nvidia container toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html 
+Run `docker run -it --network host --gpus all <container name>`

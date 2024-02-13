@@ -20,7 +20,22 @@ import typer
 from typing_extensions import Annotated
 
 # Dict to convert tensor data types (i.e. numpy) to ROS data types
-TENSOR_TO_ROS = {"float64": "float64", "int64": "int64"}
+TENSOR_TO_ROS = {
+    "bool": "bool",
+    "int8": "int8",
+    "uint8": "uint8",
+    "int16": "int16",
+    "uint16": "uint16",
+    "int32": "int32",
+    "uint32": "uint32",
+    "int64": "int64",
+    "uint64": "uint64",
+    "intp": "int64",
+    "uintp": "uint64",
+    "float16": "float32",
+    "float32": "float32",
+    "float64": "float64",
+}
 
 app = typer.Typer()
 
@@ -29,9 +44,10 @@ app = typer.Typer()
 class Msg:
     """Dataclass to store info that will be inserted into a ROS message"""
 
-    type: str
+    ros_dtype: str
     name: str
-    shape: str
+    shape: list
+    base_dtype: str
 
 
 @dataclasses.dataclass
@@ -57,7 +73,7 @@ def unpack_schema(sig, name):
     if "params" in sig:
         raise NotImplementedError("Model signature with parameters is not supported")
 
-    return Msg(ros_dtype + "[]", name, shape)
+    return Msg(ros_dtype + "[]", name, shape, sig["tensor-spec"]["dtype"])
 
 
 def filter_model_name(model_name):
@@ -71,19 +87,27 @@ def get_model_uri(model_name, model_ver):
     return client.get_model_version_download_uri(model_name, model_ver)
 
 
+def sig_to_srv(model_name, sig_dict):
+    """
+    Converts the types from a signature dict to ROS msg/srv types
+    The signature dictionary is the signature section of hte MLmodel file, except
+    represented as a dictionary.
+    See https://mlflow.org/docs/latest/models.html#model-signature-types
+    """
+    req_msg_name = model_name + "_req"
+    res_msg_name = model_name + "_res"
+    req = unpack_schema(sig_dict["inputs"], req_msg_name)
+    res = unpack_schema(sig_dict["outputs"], res_msg_name)
+    return Srv(req, res)
+
+
 def gen_msg(env, model_name, model_ver, msgs_dir):
     """Writes a ROS .srv file for a model"""
     # get model signature
     model_uri = get_model_uri(model_name, model_ver)
     sig = mlflow.models.get_model_info(model_uri).signature.to_dict()
-
     clean_name = filter_model_name(model_name)
-
-    req_msg_name = clean_name + "_req"
-    res_msg_name = clean_name + "_res"
-    req = unpack_schema(sig["inputs"], req_msg_name)
-    res = unpack_schema(sig["outputs"], res_msg_name)
-    service = Srv(req, res)
+    service = sig_to_srv(clean_name, sig)
 
     template = env.get_template("service.srv")
     target_file = msgs_dir / "srv" / f"{clean_name}.srv"
@@ -128,7 +152,7 @@ def gen_pkg(env, model_name, msg_pkg, msg_dir, exec_dir):
 
 def edit_dockerfile(model_name, output_directory, rospkg_directory):
     """Changes the MLFLow generated dockerfile such that ROS and the
-        ROS package files are installed"""
+    ROS package files are installed"""
     path = Path(output_directory) / "Dockerfile"
     contents = path.read_text()
 
@@ -137,7 +161,7 @@ def edit_dockerfile(model_name, output_directory, rospkg_directory):
 
     # Add `as base` to the initial build stage
     assert not re.search("FROM ubuntu:20.04", contents) is None
-    contents = re.sub("FROM ubuntu:20.04", "FROM ubuntu:20.04 as base", contents)
+    contents = re.sub("FROM ubuntu:20.04", "FROM ros:noetic as base", contents)
     # Remove the entrypoint command in the dockerfile as we will define a new one later
     assert not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
@@ -225,14 +249,21 @@ def generate_dockerfile(
     output_directory: Annotated[
         Optional[str], typer.Option(help="Folder containing the generated files")
     ] = "dockerfile",
+    env_manager: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The environment manager that will be used to install model "
+            + "dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'"
+        ),
+    ] = "virtualenv",
 ):
     """
     Creates the Dockerfile used to build the image containing the model and its ROS package.
     The model is downloaded from the MLFLow model registry as part of the process.
     WARNING: the image will NOT build if `--rospkg-directory` does not lead to a valid ROS package.
     """
-    if rospkg_directory == "rospkg" and not Path("rospkg").is_dir():
-        # rospkg doesn't exist, create it
+    if rospkg_directory == "rospkg":
+        # custom rospkg not provided, create our own
         generate_rospkg(model_name, model_ver)
 
     # get mlflow to generate their docker image
@@ -245,11 +276,14 @@ def generate_dockerfile(
             get_model_uri(model_name, model_ver),
             "--output-directory",
             output_directory,
+            "--env-manager",
+            env_manager,
         ],
         check=True,
         text=True,
     )
 
+    # edit mlflow's dockerfile
     edit_dockerfile(model_name, output_directory, rospkg_directory)
 
 
@@ -267,12 +301,19 @@ def make_image(
     tag: Annotated[
         Optional[str], typer.Option(help="Name of the generated image")
     ] = None,
+    env_manager: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The environment manager that will be used to install model "
+            + "dependencies and run the model. Can be 'local', 'virtualenv' or 'conda'"
+        ),
+    ] = "virtualenv",
 ):
     """
     Builds a Docker image containing the ROS node for the model.
     The model is downloaded locally in the process.
     """
-    generate_dockerfile(model_name, model_ver)
+    generate_dockerfile(model_name, model_ver, env_manager=env_manager)
 
     # create docker build command
     cmd = [
