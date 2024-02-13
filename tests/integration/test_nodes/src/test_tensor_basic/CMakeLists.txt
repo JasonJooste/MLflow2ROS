@@ -7,7 +7,7 @@ find_package(catkin REQUIRED COMPONENTS rospy)
 catkin_package()
 
 catkin_install_python(
-  PROGRAMS scripts/test_tensor_basic
+  PROGRAMS scripts/test_tensor_basic.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

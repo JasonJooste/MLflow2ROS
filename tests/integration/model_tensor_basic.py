@@ -8,9 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 
-def run_and_log():
-    print("Logging model")
-
+def run_and_log(model_name):
     # Load the Iris dataset
     X, y = datasets.load_iris(return_X_y=True)
 
@@ -41,8 +39,6 @@ def run_and_log():
 
     # Start an MLflow run
     with mlflow.start_run():
-        print("Running model")
-
         # Log the hyperparameters
         mlflow.log_params(params)
 
@@ -61,8 +57,6 @@ def run_and_log():
             artifact_path="iris_model",
             signature=signature,
             input_example=X_train,
-            registered_model_name="tensor_basic",
+            registered_model_name=model_name,
         )
-
-        print("Logged model")
 

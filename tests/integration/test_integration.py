@@ -7,6 +7,7 @@ from pathlib import Path
 import app
 import os
 import model_tensor_basic
+import model_tensorflow
 
 VALIDATOR_CONTAINER = "integration_test_validator"
 
@@ -29,7 +30,7 @@ def override_tracking_uri(scope="session", autouse=True):
 
 
 @pytest.fixture
-def docker_client():
+def docker_client(scope="session", autouse=True):
     return docker.from_env()
 
 
@@ -57,24 +58,16 @@ def mlflow_server_container(docker_client, scope="session", autouse=True):
     container.stop()
 
 
-def test_tensor_basic(docker_client, mlflow_server_container, roscore_container, build_validator_container, override_tracking_uri):
-    test_name = "tensor_basic"
-    model_img_name = f"{test_name}_model"
-
-    # log the model
-    model_tensor_basic.run_and_log()
-
+def make_image_and_run_tests(docker_client, test_name, model_img_name):
     # run app to build image
-    # app.make_image(model_name=test_name, model_ver=1, tag=model_img_name)
+    app.make_image(model_name=test_name, model_ver=1, tag=model_img_name, output_directory=Path("tests_generated_files") / test_name)
 
-    print("Starting model container")
     model = docker_client.containers.run(model_img_name, network="host", detach=True, auto_remove=True)
 
-    print("Starting validator container")
     try:
-        # must use subprocess since the docker api doesn't print to stdout
+        # Start validator container. Must use subprocess since the docker api doesn't print to stdout
         cmd = ["docker", "run", "--network", "host", VALIDATOR_CONTAINER, 
-               "rosrun", f"test_{test_name}", f"test_{test_name}"]
+               "rosrun", f"test_{test_name}", f"test_{test_name}.py"]
 
         subprocess.run(cmd, check=True, text=True)
     except:
@@ -82,3 +75,19 @@ def test_tensor_basic(docker_client, mlflow_server_container, roscore_container,
         assert False
     finally:
         model.stop()
+
+
+def test_tensor_basic(docker_client, mlflow_server_container, roscore_container, build_validator_container, override_tracking_uri):
+    test_name = "tensor_basic"
+    model_img_name = f"{test_name}_model"
+    # log the model
+    model_tensor_basic.run_and_log(test_name)
+    make_image_and_run_tests(docker_client, test_name, model_img_name)
+
+
+# def test_tensorflow(docker_client, mlflow_server_container, roscore_container, build_validator_container, override_tracking_uri):
+#     test_name = "tensorflow"
+#     model_img_name = f"{test_name}_model"
+#     # log the model
+#     model_tensorflow.run_and_log(test_name)
+#     make_image_and_run_tests(docker_client, test_name, model_img_name)
