@@ -1,6 +1,8 @@
 import docker
 import pytest
 
+import time
+
 import subprocess
 from pathlib import Path
 
@@ -64,13 +66,19 @@ def make_image_and_run_tests(docker_client, test_name, model_img_name):
 
     model = docker_client.containers.run(model_img_name, network="host", detach=True, auto_remove=True)
 
+    # wait a bit and make sure the model container hasn't crashed. It would be better to make another test that checks if the 
+    # model container launches the model correctly. 
+    time.sleep(5)
+    model.reload()
+    assert(model.status != "exited")
+
     try:
         # Start validator container. Must use subprocess since the docker api doesn't print to stdout
         cmd = ["docker", "run", "--network", "host", VALIDATOR_CONTAINER, 
                "rosrun", f"test_{test_name}", f"test_{test_name}.py"]
 
         subprocess.run(cmd, check=True, text=True)
-    except:
+    except subprocess.CalledProcessError:
         print("TESTS FAILED")
         assert False
     finally:
@@ -80,14 +88,12 @@ def make_image_and_run_tests(docker_client, test_name, model_img_name):
 def test_tensor_basic(docker_client, mlflow_server_container, roscore_container, build_validator_container, override_tracking_uri):
     test_name = "tensor_basic"
     model_img_name = f"{test_name}_model"
-    # log the model
     model_tensor_basic.run_and_log(test_name)
     make_image_and_run_tests(docker_client, test_name, model_img_name)
 
 
-# def test_tensorflow(docker_client, mlflow_server_container, roscore_container, build_validator_container, override_tracking_uri):
-#     test_name = "tensorflow"
-#     model_img_name = f"{test_name}_model"
-#     # log the model
-#     model_tensorflow.run_and_log(test_name)
-#     make_image_and_run_tests(docker_client, test_name, model_img_name)
+def test_tensorflow_floats(docker_client, mlflow_server_container, roscore_container, build_validator_container, override_tracking_uri):
+    test_name = "tf_floats"
+    model_img_name = f"{test_name}_model"
+    model_tensorflow.run_and_log(test_name)
+    make_image_and_run_tests(docker_client, test_name, model_img_name)

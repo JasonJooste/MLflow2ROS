@@ -8,7 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 
-def run_and_log(model_name):
+def run_and_log(test_name):
     # Load the Iris dataset
     X, y = datasets.load_iris(return_X_y=True)
 
@@ -57,6 +57,6 @@ def run_and_log(model_name):
             artifact_path="iris_model",
             signature=signature,
             input_example=X_train,
-            registered_model_name=model_name,
+            registered_model_name=test_name,
         )
 

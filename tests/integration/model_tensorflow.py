@@ -136,7 +136,6 @@ def run_and_log(model_name):
             if epoch % 10 == 0:
                 mlflow.log_metric(key="train_losses", value=train_loss, step=epoch)
                 mlflow.log_metric(key="test_losses", value=test_loss, step=epoch)
-                print(f"Mean squared error for step {epoch}: {train_loss.numpy():0.3f}")
 
         # Log the parameters
         mlflow.log_params(
@@ -153,9 +152,6 @@ def run_and_log(model_name):
                 "final_test_loss": test_loss.numpy(),
             }
         )
-        print(f"\nFinal train loss: {train_loss:0.3f}")
-        print(f"Final test loss: {test_loss:0.3f}")
-
         # Export the tensorflow model
         lin_reg_export = ExportModule(model=lin_reg, norm_x=norm_x, norm_y=norm_y)
 
@@ -164,3 +160,7 @@ def run_and_log(model_name):
         signature = infer_signature(x_test.numpy(), predictions.numpy())
 
         mlflow.tensorflow.log_model(lin_reg_export, "model", signature=signature, registered_model_name=model_name)
+
+
+if __name__ == "__main__":
+    run_and_log("tf-example")
