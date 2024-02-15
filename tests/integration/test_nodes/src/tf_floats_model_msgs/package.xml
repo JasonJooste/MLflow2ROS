@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>tf_floats_msgs</name>
+  <name>tf_floats_model_msgs</name>
   <version>0.0.0</version>
   <description>TODO</description>
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(tensor_basic_msgs)
+project(sklearn_tensor_basic_model_msgs)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -10,7 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  tensor_basic.srv
+  sklearn_tensor_basic_model.srv
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -20,7 +20,7 @@ generate_messages(
 )
 
 catkin_package(
- LIBRARIES tensor_basic_msgs
+ LIBRARIES sklearn_tensor_basic_model_msgs
  CATKIN_DEPENDS std_msgs
 CATKIN_DEPENDS message_runtime
 )

@@ -1,0 +1,7 @@
+float32[] tf_floats_model_req
+string REQ_SHAPE="[-1, 8]"
+
+---
+
+float32[] tf_floats_model_res
+string RES_SHAPE="[-1]"

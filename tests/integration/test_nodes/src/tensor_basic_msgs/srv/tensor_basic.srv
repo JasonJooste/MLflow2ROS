@@ -1,7 +1,0 @@
-float64[] tensor_basic_req
-string REQ_SHAPE="[-1, 4]"
-
----
-
-int64[] tensor_basic_res
-string RES_SHAPE="[-1]"

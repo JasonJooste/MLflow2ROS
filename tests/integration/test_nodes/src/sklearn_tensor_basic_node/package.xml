@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
 
-  <name>test_tensor_basic</name>
+  <name>sklearn_tensor_basic_node</name>
   <version>0.1.0</version>
   <description>The docker model integration testing package</description>
   <maintainer email="zhirong.lin@data61.csiro.au">Leo Lin</maintainer>
@@ -9,7 +9,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>tensor_basic_msgs</depend>
+  <depend>sklearn_tensor_basic_node_msgs</depend>
   <depend>tf</depend>
 
 </package>

@@ -3,13 +3,13 @@
 import unittest
 
 import rospy
-import tf_floats_msgs.srv
+import tf_floats_model_msgs.srv
 import numpy as np
 
 
 class TestListElements(unittest.TestCase):
     def test_response(self):
-        rospy.init_node("test_tf_floats", anonymous=False)
+        rospy.init_node("tf_floats_node", anonymous=False)
 
         X_test = [
         4.020199775695801,
@@ -21,42 +21,21 @@ class TestListElements(unittest.TestCase):
         37.720001220703125,
         -122.16999816894531
         ]
-        # ,
-        # [
-        # 2.7969000339508057,
-        # 38,
-        # 4.626707077026367,
-        # 1.0789074897766113,
-        # 2167,
-        # 3.288315534591675,
-        # 37.790000915527344,
-        # -122.22000122070312
-        # ],
-        # [
-        # 3.2249999046325684,
-        # 44,
-        # 5.854984760284424,
-        # 1.2054380178451538,
-        # 946,
-        # 2.858006000518799,
-        # 37.75,
-        # -122.1500015258789
-        # ]
 
         X_test = np.array(X_test)
 
-        req = tf_floats_msgs.srv.tf_floatsRequest(X_test.ravel())
+        req = tf_floats_model_msgs.srv.tf_floats_modelRequest(X_test.ravel())
 
         print("Waiting for service")
-        rospy.wait_for_service("tf_floats_service")
+        rospy.wait_for_service("tf_floats_model_service")
 
         logreg = rospy.ServiceProxy(
-            "tf_floats_service", tf_floats_msgs.srv.tf_floats
+            "tf_floats_model_service", tf_floats_model_msgs.srv.tf_floats_model
         )
 
         try:
             print("Sending request")
-            predictions = logreg(req).tf_floats_res
+            predictions = logreg(req).tf_floats_model_res
         except rospy.ServiceException as exc:
             print("Service did not process request: " + str(exc))
 

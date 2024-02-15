@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16.3)
 
-project(test_tensor_basic)
+project(tf_floats_node)
 
 find_package(catkin REQUIRED COMPONENTS rospy)
 
 catkin_package()
 
 catkin_install_python(
-  PROGRAMS scripts/test_tensor_basic.py
+  PROGRAMS scripts/tf_floats_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

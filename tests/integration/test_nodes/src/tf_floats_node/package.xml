@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
 
-  <name>test_tf_floats</name>
+  <name>tf_floats_node</name>
   <version>0.1.0</version>
   <description>The docker model integration testing package</description>
   <maintainer email="zhirong.lin@data61.csiro.au">Leo Lin</maintainer>

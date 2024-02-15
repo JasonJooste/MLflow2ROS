@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <launch>
-  <node name="test_tf_floats.py" pkg="test_tf_floats" />
+  <node name="tf_floats_node.py" pkg="tf_floats_node" />
 </launch>

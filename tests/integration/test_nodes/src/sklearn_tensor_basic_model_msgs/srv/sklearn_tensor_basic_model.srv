@@ -1,0 +1,7 @@
+float64[] sklearn_tensor_basic_model_req
+string REQ_SHAPE="[-1, 4]"
+
+---
+
+int64[] sklearn_tensor_basic_model_res
+string RES_SHAPE="[-1]"

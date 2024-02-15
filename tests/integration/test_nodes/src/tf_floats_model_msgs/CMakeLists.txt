@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(tf_floats_msgs)
+project(tf_floats_model_msgs)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -10,7 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  tf_floats.srv
+  tf_floats_model.srv
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -20,7 +20,7 @@ generate_messages(
 )
 
 catkin_package(
- LIBRARIES tf_floats_msgs
+ LIBRARIES tf_floats_model_msgs
  CATKIN_DEPENDS std_msgs
 CATKIN_DEPENDS message_runtime
 )
