@@ -2,9 +2,9 @@
 
 import unittest
 
+import numpy as np
 import rospy
 import tf_floats_model_msgs.srv
-import numpy as np
 
 
 class TestListElements(unittest.TestCase):
@@ -12,14 +12,14 @@ class TestListElements(unittest.TestCase):
         rospy.init_node("tf_floats_node", anonymous=False)
 
         X_test = [
-        4.020199775695801,
-        43,
-        4.794676780700684,
-        1.031685709953308,
-        2139,
-        2.711026668548584,
-        37.720001220703125,
-        -122.16999816894531
+            4.020199775695801,
+            43,
+            4.794676780700684,
+            1.031685709953308,
+            2139,
+            2.711026668548584,
+            37.720001220703125,
+            -122.16999816894531,
         ]
 
         X_test = np.array(X_test)

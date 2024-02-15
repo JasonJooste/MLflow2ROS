@@ -24,6 +24,8 @@ For every model, the following is done during the integration test:
 
 All models are run on the local development environment and dependencies are listed in `requirements_dev.txt`.
 
+Files generated as part of running the integration tests are placed in the `tests_generated_files` directory.
+
 ### How to create a new test
 Each integration test consists of: 
 - A model 

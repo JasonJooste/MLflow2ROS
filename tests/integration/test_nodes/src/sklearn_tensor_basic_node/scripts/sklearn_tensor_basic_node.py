@@ -16,16 +16,17 @@ class TestListElements(unittest.TestCase):
         X, y = datasets.load_iris(return_X_y=True)
 
         # Split the data into training and test sets
-        _, X_test, _, _ = train_test_split(
-            X, y, test_size=0.2, random_state=42
+        _, X_test, _, _ = train_test_split(X, y, test_size=0.2, random_state=42)
+        req = sklearn_tensor_basic_model_msgs.srv.sklearn_tensor_basic_modelRequest(
+            X_test.ravel()
         )
-        req = sklearn_tensor_basic_model_msgs.srv.sklearn_tensor_basic_modelRequest(X_test.ravel())
 
         print("Waiting for service")
         rospy.wait_for_service("sklearn_tensor_basic_model_service")
 
         logreg = rospy.ServiceProxy(
-            "sklearn_tensor_basic_model_service", sklearn_tensor_basic_model_msgs.srv.sklearn_tensor_basic_model
+            "sklearn_tensor_basic_model_service",
+            sklearn_tensor_basic_model_msgs.srv.sklearn_tensor_basic_model,
         )
 
         try:
@@ -36,7 +37,7 @@ class TestListElements(unittest.TestCase):
 
         print("Received response")
 
-        expected = ( # goddam it autoformatter
+        expected = (  # goddam it autoformatter
             1,
             0,
             2,

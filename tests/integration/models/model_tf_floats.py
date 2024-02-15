@@ -1,9 +1,8 @@
 # tensorflow 2.x core api
-import tensorflow as tf
-from sklearn.datasets import fetch_california_housing
-
 import mlflow
+import tensorflow as tf
 from mlflow.models import infer_signature
+from sklearn.datasets import fetch_california_housing
 
 
 class Normalize(tf.Module):
@@ -96,9 +95,13 @@ def run_and_log(model_name):
         # Use mini batches for memory efficiency and faster convergence
         batch_size = 32
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train_norm, y_train_norm))
-        train_dataset = train_dataset.shuffle(buffer_size=x_train.shape[0]).batch(batch_size)
+        train_dataset = train_dataset.shuffle(buffer_size=x_train.shape[0]).batch(
+            batch_size
+        )
         test_dataset = tf.data.Dataset.from_tensor_slices((x_test_norm, y_test_norm))
-        test_dataset = test_dataset.shuffle(buffer_size=x_test.shape[0]).batch(batch_size)
+        test_dataset = test_dataset.shuffle(buffer_size=x_test.shape[0]).batch(
+            batch_size
+        )
 
         # Set training parameters
         epochs = 100
@@ -159,7 +162,12 @@ def run_and_log(model_name):
         predictions = lin_reg_export(x_test)
         signature = infer_signature(x_test.numpy(), predictions.numpy())
 
-        mlflow.tensorflow.log_model(lin_reg_export, "model", signature=signature, registered_model_name=model_name)
+        mlflow.tensorflow.log_model(
+            lin_reg_export,
+            "model",
+            signature=signature,
+            registered_model_name=model_name,
+        )
 
 
 if __name__ == "__main__":

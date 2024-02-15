@@ -1,11 +1,10 @@
 import mlflow
-from mlflow.models import infer_signature
-
 import pandas as pd
+from mlflow.models import infer_signature
 from sklearn import datasets
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 
 
 def run_and_log(model_name):
@@ -59,4 +58,3 @@ def run_and_log(model_name):
             input_example=X_train,
             registered_model_name=model_name,
         )
-

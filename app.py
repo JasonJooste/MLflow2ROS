@@ -167,7 +167,9 @@ def edit_dockerfile(model_name, dockerfile_directory, rospkg_directory):
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
     # Edit the COPY command to work with our build context
     assert not re.search(r"(?<=COPY )(.*)(?=model_dir)", contents) is None
-    contents = re.sub(r"(?<=COPY )(.*)(?=model_dir)", f"{dockerfile_directory}/", contents)
+    contents = re.sub(
+        r"(?<=COPY )(.*)(?=model_dir)", f"{dockerfile_directory}/", contents
+    )
 
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(searchpath=Path.cwd() / "templates"),
@@ -264,7 +266,7 @@ def generate_dockerfile(
     """
     dockerfile_dir = Path(output_directory) / "dockerfile"
 
-    if rospkg_directory == None:
+    if rospkg_directory is None:
         rospkg_directory = Path(output_directory) / "rospkg"
         # custom rospkg not provided, create our own
         generate_rospkg(model_name, model_ver, output_directory=rospkg_directory)
@@ -319,7 +321,12 @@ def make_image(
     Builds a Docker image containing the ROS node for the model.
     The model is downloaded locally in the process.
     """
-    generate_dockerfile(model_name, model_ver, output_directory=output_directory, env_manager=env_manager)
+    generate_dockerfile(
+        model_name,
+        model_ver,
+        output_directory=output_directory,
+        env_manager=env_manager,
+    )
 
     # create docker build command
     cmd = [

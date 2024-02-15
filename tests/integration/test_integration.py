@@ -1,13 +1,12 @@
-import docker
-import pytest
-
-import time
-
+import os
 import subprocess
+import time
 from pathlib import Path
 
 import app
-import os
+import docker
+import pytest
+
 from models import model_sklearn_tensor_basic, model_tf_floats
 
 VALIDATOR_CONTAINER = "integration_test_validator"
