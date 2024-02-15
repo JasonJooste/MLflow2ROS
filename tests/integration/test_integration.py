@@ -8,8 +8,7 @@ from pathlib import Path
 
 import app
 import os
-import tests.integration.model_sklearn_tensor_basic as model_sklearn_tensor_basic
-import tests.integration.model_tf_floats as model_tf_floats
+from models import model_sklearn_tensor_basic, model_tf_floats
 
 VALIDATOR_CONTAINER = "integration_test_validator"
 TESTING_TRACKING_URI = "http://127.0.0.1:55555"
