@@ -124,7 +124,7 @@ def gen_exec(env, model_name, msg_pkg, srv, exec_dir):
     render_data["model_name"] = clean_name
     render_data["msg_pkg"] = msg_pkg
 
-    template = env.get_template("exec.py")
+    template = env.get_template("exec.py.template")
     target_file = exec_dir / "scripts" / f"{clean_name}.py"
     target_file.write_text(template.render(render_data))
 
