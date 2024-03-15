@@ -5,7 +5,7 @@ import functools
 import mlflow
 import numpy as np
 import rospy
-from {{ msg_pkg }} import srv
+from {{msg_pkg}} import srv
 
 
 def message_interface(request, model):

@@ -3,11 +3,11 @@ import subprocess
 import time
 from pathlib import Path
 
-import app
 import docker
 import pytest
-
 from models import model_sklearn_tensor_basic, model_tf_floats
+
+import app
 
 VALIDATOR_CONTAINER = "integration_test_validator"
 TESTING_TRACKING_URI = "http://127.0.0.1:55555"
