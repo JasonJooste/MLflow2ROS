@@ -6,4 +6,4 @@ black
 isort
 # Dependencies for integration tests 
 tensorflow
-sklearn
+scikit-learn
