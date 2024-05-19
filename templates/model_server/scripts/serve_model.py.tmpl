@@ -12,13 +12,10 @@ def message_interface(request, model):
     """Converts the inputs and outputs to and from ROS messages respectively"""
 
     # Get raw data from the ROS request
-    data = np.array(request.{{ request.name }}, dtype="{{ request.base_dtype }}")
+    data = np.array(request.model_in, dtype="{{request.base_dtype }}")
 
     # reshape request if necessary
-    {# the %- denote trim symbols #}
-    {%- if request.shape|length > 0 -%}
-        data = data.reshape({{ request.shape }})
-    {%- endif %}
+    data = data.reshape({{ request.shape }})
 
     # Use the model to make the prediction
     predictions = model.predict(data)
@@ -41,7 +38,7 @@ def main():
     rospy.loginfo("Model loaded")
 
     rospy.Service(
-        "{{ model_name }}_service",
+        "{{ model_name }}",
         srv.{{ model_name }},
         functools.partial(message_interface, model=pyfunc_model),
     )
