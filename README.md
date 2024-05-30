@@ -12,6 +12,7 @@ Run `./app.py --help` to get started
 
 ### Running tests
 Unit test: `python -m pytest`
+To show prints: `python -m pytest -s`
 
 ### Running containers with GPU
 Install nvidia container toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html 

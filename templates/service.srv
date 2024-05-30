@@ -1,7 +1,0 @@
-{{ request.ros_dtype }} {{ request.name }}
-string REQ_SHAPE="{{ request.shape }}"
-
----
-
-{{ response.ros_dtype }} {{ response.name }}
-string RES_SHAPE="{{ response.shape }}"

@@ -11,3 +11,4 @@ dockerfile/
 rospkg/
 venv/
 __pycache__/
+generated_files
