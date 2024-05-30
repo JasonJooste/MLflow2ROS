@@ -1,3 +1,6 @@
+""" Test conversion between mlflow signatures and ros message types"""
+# pylint: disable=redefined-outer-name,unused-argument
+
 import sys
 from pathlib import Path
 
@@ -5,6 +8,7 @@ test_dir = Path(__file__).parent
 root_dir = test_dir.parent
 sys.path.append(str(root_dir))
 
+# pylint: disable=import-error,wrong-import-position,wrong-import-order
 import app
 
 

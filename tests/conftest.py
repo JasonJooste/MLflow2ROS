@@ -1,7 +1,5 @@
+""" pytest shared fixtures"""
 import os
-import socket
-import subprocess
-from pathlib import Path
 
 import mlflow
 import pytest

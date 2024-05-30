@@ -1,3 +1,5 @@
+""" Some fixtures for logging sklearn models"""
+# pylint: disable=redefined-outer-name,unused-argument
 import mlflow
 import pytest
 import sklearn.datasets
@@ -11,8 +13,8 @@ from sklearn.neighbors import KNeighborsClassifier
 @pytest.fixture(scope="session")
 def iris_data():
     iris = sklearn.datasets.load_iris()
-    x = iris.data[:, :2]
-    y = iris.target
+    x = iris["data"][:, :2]
+    y = iris["target"]
     # NOTE: This is mutable and could (unlikely) cause issues with the session context
     return x, y
 

@@ -1,11 +1,9 @@
-import os
-import subprocess
+""" end-to-end integration tests"""
+# pylint: disable=redefined-outer-name,unused-argument
+
 import sys
-import time
 from pathlib import Path
 
-import docker
-import mlflow
 import pytest
 from sklearn_models import *
 
@@ -13,6 +11,7 @@ test_dir = Path(__file__).parent
 root_dir = test_dir.parent
 sys.path.append(str(root_dir))
 
+# pylint: disable=import-error,wrong-import-position,wrong-import-order
 import app
 
 ALL_LOGGED_MODELS = ["sklearn_logged_knn", "sklearn_logged_logreg"]

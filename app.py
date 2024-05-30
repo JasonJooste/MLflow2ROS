@@ -1,20 +1,16 @@
-#! /usr/bin/env python3
-
 """
-This module operates as a standalone executable which offers a command line 
+This module operates as a standalone executable which offers a command line
 interface for converting MLFlow models into ROS packages and containerises with Docker.
 """
 
 import dataclasses
 import json
-import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
 
-import docker
 import jinja2
 import mlflow
 import rich
@@ -82,6 +78,8 @@ def unpack_schema(sig):
     if sig["type"] == "tensor":
         ros_dtype = TENSOR_TO_ROS[sig["tensor-spec"]["dtype"]]
         shape = sig["tensor-spec"]["shape"]
+    else:
+        assert False, "This should never be reached because of previous checks"
     return Msg(ros_dtype + "[]", shape, sig["tensor-spec"]["dtype"])
 
 
@@ -104,11 +102,11 @@ def check_signature(sig):
         raise LoggedModelError(
             "Model has been logged without a signature. MLFLow2ROS needs an input/output signature for the model to construct the input/output ROS messages. See https://mlflow.org/docs/latest/model/signatures.html#id1"
         )
-    elif "inputs" not in sig:
+    if "inputs" not in sig:
         raise LoggedModelError(
             "Model has been logged without an input signature. Perhaps you used 'infer_signature' incorrectly? Make sure to include both input and output data when inferring the signature"
         )
-    elif "outputs" not in sig:
+    if "outputs" not in sig:
         raise LoggedModelError(
             "Model has been logged without an output signature. Perhaps you used 'infer_signature' incorrectly? Make sure to include both input and output data when inferring the signature"
         )
@@ -121,7 +119,7 @@ def check_signature(sig):
             raise NotImplementedError(
                 "Model signature type `dataframe` is not supported"
             )
-        elif sig[s][0]["type"] == "column":
+        if sig[s][0]["type"] == "column":
             raise NotImplementedError("Model signature type `column` is not supported")
     if "params" in sig:
         raise NotImplementedError("Model signature with parameters is not supported")
@@ -136,7 +134,6 @@ def gen_msg(model_name, model_ver):
     # The values of the signature dict are stored as strings and need to be processed
     sig_dict = {k: json.loads(v) for k, v in sig.items() if v is not None}
     check_signature(sig_dict)
-    clean_name = filter_model_name(model_name)
     # We currently only support input/output lengths of 1
     request = unpack_schema(sig_dict["inputs"][0])
     response = unpack_schema(sig_dict["outputs"][0])
@@ -144,6 +141,7 @@ def gen_msg(model_name, model_ver):
 
 
 def write_msg(env, service, clean_name, out_dir):
+    """ Write the ros service"""
     template = env.get_template("model_msgs/srv/__model_name__.srv.tmpl")
     target_file = out_dir / "model_msgs" / "srv" / f"{clean_name}.srv"
     # target_file.write_text(template.render(dataclasses.asdict(service)))
@@ -155,7 +153,7 @@ def write_server(env, clean_name, srv, out_dir):
     """Writes a ROS node server package for the model"""
     render_data = srv.asdict() | {"model_name": clean_name, "msg_pkg": "model_msgs"}
     template = env.get_template("model_server/scripts/serve_model.py.tmpl")
-    target_file = out_dir / "model_server" / "scripts" / f"serve_model.py"
+    target_file = out_dir / "model_server" / "scripts" / "serve_model.py"
     target_file.parent.mkdir(exist_ok=True, parents=True)
     target_file.write_text(template.render(render_data))
 
@@ -197,7 +195,7 @@ def write_dockerfile(clean_name, mlflow_dockerfile_path):
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
     # Edit the COPY command to work with our build context
     assert not re.search(r"(?<=COPY )(.*)(?=model_dir)", contents) is None
-    contents = re.sub(r"(?<=COPY )(.*)(?=model_dir)", f"docker/", contents)
+    contents = re.sub(r"(?<=COPY )(.*)(?=model_dir)", "docker/", contents)
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(searchpath=root_dir / "templates"),
         autoescape=jinja2.select_autoescape,
@@ -317,10 +315,10 @@ def generate_dockerfile(
         )
     else:
         if build_rospkg_dir.exists():
-            logging.warning(
-                f"rospkg output directory {build_rospkg_dir} already exists"
+            rich.print(
+                f"rospkg output directory {build_rospkg_dir} already exists. Overwriting it"
             )
-        shutil.copy(rospkg_dir, build_rospkg_dir)
+        shutil.copy(rospkg_directory, build_rospkg_dir)
     # Generate the base dockerfile with MLFLow
     # NOTE: There should be a way to call this through the python api
     mlflow_model_uri = get_model_uri(model_name, model_ver)
