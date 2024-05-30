@@ -5,5 +5,5 @@ pylint
 black
 isort
 # Dependencies for integration tests 
-tensorflow
+tensorflow==2.10 # The latest breaks mlflow tensorflow logging
 scikit-learn
