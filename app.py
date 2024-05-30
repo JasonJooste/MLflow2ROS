@@ -12,11 +12,13 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Optional
+import shutil
 
 import jinja2
 import mlflow
 import rich
 import typer
+import docker
 from typing_extensions import Annotated
 
 # Dict to convert tensor data types (i.e. numpy) to ROS data types
@@ -37,6 +39,8 @@ TENSOR_TO_ROS = {
     "float64": "float64",
 }
 
+root_dir = Path(__file__).parent
+
 app = typer.Typer()
 
 
@@ -44,6 +48,9 @@ app = typer.Typer()
         # """ Class to store all info required to make a model metapackage in ros """ 
         # srv: Srv
         # model_name: str  
+
+class LoggedModelError(Exception):
+    pass
 
 @dataclasses.dataclass
 class Msg:
@@ -69,19 +76,9 @@ class Srv:
 
 def unpack_schema(sig):
     """Reads a model signature dictionary and returns its corresponding ROS msg info"""
-    sig = json.loads(sig)[0]
-
     if sig["type"] == "tensor":
         ros_dtype = TENSOR_TO_ROS[sig["tensor-spec"]["dtype"]]
         shape = sig["tensor-spec"]["shape"]
-    elif sig["type"] == "dataframe":
-        raise NotImplementedError("Model signature type `dataframe` is not supported")
-    elif sig["type"] == "column":
-        raise NotImplementedError("Model signature type `column` is not supported")
-
-    if "params" in sig:
-        raise NotImplementedError("Model signature with parameters is not supported")
-
     return Msg(ros_dtype + "[]", shape, sig["tensor-spec"]["dtype"])
 
 
@@ -96,17 +93,25 @@ def get_model_uri(model_name, model_ver):
     return client.get_model_version_download_uri(model_name, model_ver)
 
 
-def sig_to_srv(model_name, sig_dict):
-    """
-    Converts the types from a signature dict to ROS msg/srv types
-    The signature dictionary is the signature section of hte MLmodel file, except
-    represented as a dictionary.
-    See https://mlflow.org/docs/latest/models.html#model-signature-types
-    """
-    req = unpack_schema(sig_dict["inputs"])
-    res = unpack_schema(sig_dict["outputs"])
-    return Srv(req, res)
-
+def check_signature(sig):
+    """ Check that the signature is able to be processed by MLFlow2ROS"""
+    # Check that the signature type is supported
+    # Check that both input and output signatures are present
+    if "inputs" not in sig and "outputs" not in sig:
+        raise LoggedModelError("Model has been logged without a signature. MLFLow2ROS needs an input/output signature for the model to construct the input/output ROS messages. See https://mlflow.org/docs/latest/model/signatures.html#id1")
+    elif "inputs" not in sig:
+        raise LoggedModelError("Model has been logged without an input signature. Perhaps you used 'infer_signature' incorrectly? Make sure to include both input and output data when inferring the signature")
+    elif "outputs" not in sig:
+        raise LoggedModelError("Model has been logged without an output signature. Perhaps you used 'infer_signature' incorrectly? Make sure to include both input and output data when inferring the signature")
+    for s in ["inputs", "outputs"]:
+        if len(sig[s]) != 1:
+            raise NotImplementedError(f"Only {s[:-1]} signatures of length 1 are supported. This signature has length {len(sig[s])}")
+        if sig[s][0]["type"] == "dataframe":
+            raise NotImplementedError("Model signature type `dataframe` is not supported")
+        elif sig[s][0]["type"] == "column":
+            raise NotImplementedError("Model signature type `column` is not supported")
+    if "params" in sig:
+        raise NotImplementedError("Model signature with parameters is not supported")
 
 def gen_msg(model_name, model_ver):
     """Writes a ROS .srv file for a model"""
@@ -114,9 +119,14 @@ def gen_msg(model_name, model_ver):
     model_uri = get_model_uri(model_name, model_ver)
     # NOTE: This could be moved out of this fn
     sig = mlflow.models.get_model_info(model_uri).signature.to_dict()
+    # The values of the signature dict are stored as strings and need to be processed
+    sig_dict = {k:json.loads(v) for k,v in sig.items() if v is not None}
+    check_signature(sig_dict)
     clean_name = filter_model_name(model_name)
-    service = sig_to_srv(clean_name, sig)
-    return service
+    # We currently only support input/output lengths of 1
+    request = unpack_schema(sig_dict["inputs"][0])
+    response = unpack_schema(sig_dict["outputs"][0])
+    return Srv(request,response)
 
 
 def write_msg(env, service, clean_name, out_dir):
@@ -155,15 +165,12 @@ def write_pkg(env, srv, clean_name, out_dir):
         out_path.write_text(template.render(render_data))
 
 
-def write_dockerfile(clean_name, dockerfile_directory, rospkg_directory):
+def write_dockerfile(clean_name, mlflow_dockerfile_path):
     """Changes the MLFLow generated dockerfile such that ROS and the
     ROS package files are installed"""
-    path = Path(dockerfile_directory) / "Dockerfile"
-    contents = path.read_text()
-
+    contents = mlflow_dockerfile_path.read_text()
     # rename mlflow generated Dockerfile
-    os.rename(path, path.parent / "mlflow_base.dockerfile")
-
+    mlflow_dockerfile_path.rename(mlflow_dockerfile_path.parent / "mlflow_base.dockerfile")
     # Add `as base` to the initial build stage
     assert not re.search("FROM ubuntu:20.04", contents) is None
     contents = re.sub("FROM ubuntu:20.04", "FROM ros:noetic as base", contents)
@@ -173,28 +180,39 @@ def write_dockerfile(clean_name, dockerfile_directory, rospkg_directory):
     # Edit the COPY command to work with our build context
     assert not re.search(r"(?<=COPY )(.*)(?=model_dir)", contents) is None
     contents = re.sub(
-        r"(?<=COPY )(.*)(?=model_dir)", f"{dockerfile_directory}/", contents
+        r"(?<=COPY )(.*)(?=model_dir)", f"docker/", contents
     )
-
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=Path.cwd() / "templates"),
+        loader=jinja2.FileSystemLoader(searchpath=root_dir / "templates"),
         autoescape=jinja2.select_autoescape,
         undefined=jinja2.StrictUndefined,
     )
 
     render_data = {
-        "ubuntu_distro": "focal",
         "ros_distro": "noetic",
         "model_name": clean_name,
-        "rospkg_dir": rospkg_directory,
     }
 
     template = env.get_template("Dockerfile_addendum.tmpl")
     contents = contents + template.render(render_data)
 
-    path.parent.mkdir(exist_ok=True, parents=True)
-    path.write_text(contents)
+    mlflow_dockerfile_path.write_text(contents)
 
+
+def test_image(tag, clean_name):
+    """ Trigger testing in an image"""
+    test_cmd = [
+            "docker",
+            "run",
+            "--network",
+            "host",
+            "--entrypoint",
+            "",
+            tag,
+            "bash",
+            "-c",
+            f". /activate_ros_env.bash; . /activate_mlflow_env.bash; rostest {clean_name} test_model.test"]
+    subprocess.run(test_cmd, check=True, text=True)
 
 @app.command()
 def generate_rospkg(
@@ -218,7 +236,7 @@ def generate_rospkg(
     out_dir = Path(out_dir)
     mlflow.set_tracking_uri(tracking_uri)
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=Path.cwd() / "templates"),
+        loader=jinja2.FileSystemLoader(searchpath= root_dir / "templates"),
         autoescape=jinja2.select_autoescape,
         undefined=jinja2.StrictUndefined,
     )
@@ -265,18 +283,21 @@ def generate_dockerfile(
     """
     Creates the Dockerfile used to build the image containing the model and its ROS package.
     The model is downloaded from the MLFLow model registry as part of the process.
-    WARNING: the image will NOT build if `--rospkg-directory` does not lead to a valid ROS package.
     """
+    mlflow.set_tracking_uri(tracking_uri)
     dockerfile_dir = Path(out_dir) / "docker"
 
+    build_rospkg_dir = Path(out_dir) / "rospkg"
     if rospkg_directory is None:
-        rospkg_directory = Path(out_dir) / "rospkg"
+        rospkg_directory = build_rospkg_dir
         rich.print("Custom rospkg not provided. Creating one from the model")
         generate_rospkg(model_name, model_ver, out_dir=rospkg_directory, tracking_uri=tracking_uri)
-
+    else:
+        if build_rospkg_dir.exists():
+            logging.warning(f"rospkg output directory {build_rospkg_dir} already exists")
+        shutil.copy(rospkg_dir, build_rospkg_dir)
     # Generate the base dockerfile with MLFLow
     # NOTE: There should be a way to call this through the python api
-    mlflow.set_tracking_uri(tracking_uri)
     mlflow_model_uri = get_model_uri(model_name, model_ver)
     subprocess.run(
         [
@@ -293,10 +314,10 @@ def generate_dockerfile(
         check=True,
         text=True,
     )
-
     # edit mlflow's dockerfile
     clean_name = filter_model_name(model_name)
-    write_dockerfile(clean_name, dockerfile_dir, rospkg_directory)
+    mlflow_dockerfile_path = dockerfile_dir / "Dockerfile"
+    write_dockerfile(clean_name, mlflow_dockerfile_path)
 
 
 @app.command()
@@ -330,6 +351,7 @@ def make_image(
     Builds a Docker image containing the ROS node for the model.
     The model is downloaded locally in the process.
     """
+    out_dir = Path(out_dir).absolute()
     generate_dockerfile(
         model_name,
         model_ver,
@@ -337,23 +359,22 @@ def make_image(
         env_manager=env_manager,
         tracking_uri=tracking_uri,
     )
-
-    # create docker build command
+    # Run docker build
     # NOTE: Could do this with python_on_whales to avoid the subprocess call
     cmd = [
         "docker",
         "build",
         "--file",
-        str(Path(out_dir) / "docker" / "Dockerfile"),
+        str(out_dir / "docker" / "Dockerfile"),
         "--target",
         "prod",
     ]
     if not tag is None:
         cmd = cmd + ["--tag", tag]
-    cmd.append(str(Path.cwd()))
+    cmd.append(str(out_dir))
 
     rich.print(f"Running command: '{' '.join(cmd)}'")
-
+    
     subprocess.run(cmd, check=True, text=True)
     
 
@@ -363,20 +384,7 @@ def make_image(
         clean_name = filter_model_name(model_name)
         if tag is None:
             raise NotImplementedError("Testing without a tag to reference the image is not yet supported")
-        #TODO: Test if this returns the correct error code when the test fails
-        test_cmd = [
-                "docker",
-                "run",
-                "--network",
-                "host",
-                "--entrypoint",
-                "",
-                tag,
-                "bash",
-                "-c",
-                f". /activate_ros_env.bash; . /activate_mlflow_env.bash; rostest {clean_name} test_model.test"]
-        subprocess.run(test_cmd, check=True, text=True)
-
+        test_image(tag, clean_name)
 
 
 if __name__ == "__main__":

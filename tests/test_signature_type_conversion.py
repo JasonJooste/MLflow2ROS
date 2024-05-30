@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+test_dir = Path(__file__).parent
+root_dir = test_dir.parent
+sys.path.append(str(root_dir))
+
 import app
 
 
@@ -11,13 +18,11 @@ def test_tensor_basic():
     expected = app.Srv(
         request=app.Msg(
             ros_dtype="float64[]",
-            name=f"{model_name}_req",
             shape=[-1, 4],
             base_dtype="float64",
         ),
         response=app.Msg(
             ros_dtype="int64[]",
-            name=f"{model_name}_res",
             shape=[-1],
             base_dtype="int64",
         ),

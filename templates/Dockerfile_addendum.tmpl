@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install --assume-yes --no-install-recommends pytho
 # Build the model's ROS node and install it on the image 
 FROM base as build
 RUN apt-get update && apt-get install --assume-yes --no-install-recommends python3-colcon-common-extensions 
-COPY {{ rospkg_dir }} src
+COPY rospkg/ src
 
 # Build ROS packages 
 RUN . /opt/ros/{{ ros_distro }}/setup.sh && \
