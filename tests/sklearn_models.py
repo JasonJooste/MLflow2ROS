@@ -1,10 +1,11 @@
 import mlflow
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.linear_model import LogisticRegression
-import sklearn.datasets
 import pytest
+import sklearn.datasets
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
 
 ##### Model fixtures #####
+
 
 # These are borrowed from MLFlow
 @pytest.fixture(scope="session")
@@ -31,13 +32,20 @@ def sklearn_logreg_model(iris_data):
     linear_lr.fit(x, y)
     return linear_lr
 
+
 @pytest.fixture(scope="session")
 def sklearn_logged_knn(mlflow_server, iris_data, sklearn_knn_model):
     name = "sklearn_knn_model"
     iris_x, iris_y = iris_data
     signature = mlflow.models.infer_signature(iris_x, iris_y)
     with mlflow.start_run():
-        mlflow.sklearn.log_model( sklearn_knn_model,"model", signature=signature, input_example=iris_x, registered_model_name=name)
+        mlflow.sklearn.log_model(
+            sklearn_knn_model,
+            "model",
+            signature=signature,
+            input_example=iris_x,
+            registered_model_name=name,
+        )
     return name
 
 
@@ -47,7 +55,13 @@ def sklearn_logged_logreg(mlflow_server, iris_data, sklearn_logreg_model):
     iris_x, iris_y = iris_data
     signature = mlflow.models.infer_signature(iris_x, iris_y)
     with mlflow.start_run():
-        mlflow.sklearn.log_model(sklearn_logreg_model,"model",  signature=signature, input_example=iris_x, registered_model_name=name)
+        mlflow.sklearn.log_model(
+            sklearn_logreg_model,
+            "model",
+            signature=signature,
+            input_example=iris_x,
+            registered_model_name=name,
+        )
     return name
 
 
@@ -57,7 +71,13 @@ def sklearn_logged_knn_no_input_sig(mlflow_server, iris_data, sklearn_knn_model)
     iris_x, iris_y = iris_data
     signature = mlflow.models.infer_signature(None, iris_y)
     with mlflow.start_run():
-        mlflow.sklearn.log_model( sklearn_knn_model,"model", signature=signature, input_example=iris_x, registered_model_name=name)
+        mlflow.sklearn.log_model(
+            sklearn_knn_model,
+            "model",
+            signature=signature,
+            input_example=iris_x,
+            registered_model_name=name,
+        )
     return name
 
 
@@ -67,8 +87,15 @@ def sklearn_logged_logreg_no_input_sig(mlflow_server, iris_data, sklearn_logreg_
     iris_x, iris_y = iris_data
     signature = mlflow.models.infer_signature(None, iris_y)
     with mlflow.start_run():
-        mlflow.sklearn.log_model(sklearn_logreg_model,"model",  signature=signature, input_example=iris_x, registered_model_name=name)
+        mlflow.sklearn.log_model(
+            sklearn_logreg_model,
+            "model",
+            signature=signature,
+            input_example=iris_x,
+            registered_model_name=name,
+        )
     return name
+
 
 @pytest.fixture(scope="session")
 def sklearn_logged_knn_no_output_sig(mlflow_server, iris_data, sklearn_knn_model):
@@ -76,7 +103,13 @@ def sklearn_logged_knn_no_output_sig(mlflow_server, iris_data, sklearn_knn_model
     iris_x, iris_y = iris_data
     signature = mlflow.models.infer_signature(iris_x)
     with mlflow.start_run():
-        mlflow.sklearn.log_model( sklearn_knn_model,"model", signature=signature, input_example=iris_x, registered_model_name=name)
+        mlflow.sklearn.log_model(
+            sklearn_knn_model,
+            "model",
+            signature=signature,
+            input_example=iris_x,
+            registered_model_name=name,
+        )
     return name
 
 
@@ -86,7 +119,13 @@ def sklearn_logged_logreg_no_output_sig(mlflow_server, iris_data, sklearn_logreg
     iris_x, iris_y = iris_data
     signature = mlflow.models.infer_signature(iris_x)
     with mlflow.start_run():
-        mlflow.sklearn.log_model(sklearn_logreg_model,"model",  signature=signature, input_example=iris_x, registered_model_name=name)
+        mlflow.sklearn.log_model(
+            sklearn_logreg_model,
+            "model",
+            signature=signature,
+            input_example=iris_x,
+            registered_model_name=name,
+        )
     return name
 
 
