@@ -14,21 +14,21 @@ import app
 
 def test_tensor_basic():
     sig_dict = {
-        "inputs": '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1, 4]}}]',
-        "outputs": '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]',
+        "inputs": [{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1, 4]}}],
+        "outputs": [{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}],
         "params": None,
     }
-    model_name = "tensor_basic"
-    expected = app.Srv(
-        request=app.Msg(
+    expected_req=app.Msg(
             ros_dtype="float64[]",
             shape=[-1, 4],
             base_dtype="float64",
-        ),
-        response=app.Msg(
+        )
+    expected_res=app.Msg(
             ros_dtype="int64[]",
             shape=[-1],
             base_dtype="int64",
-        ),
-    )
-    assert app.sig_to_srv(model_name, sig_dict) == expected
+        )
+    actual_req = app.unpack_schema(sig_dict["inputs"][0])
+    actual_res = app.unpack_schema(sig_dict["outputs"][0])
+    assert expected_req == actual_req
+    assert expected_res == actual_res
