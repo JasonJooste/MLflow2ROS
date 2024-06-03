@@ -379,6 +379,8 @@ def make_image(
     The model is downloaded locally in the process.
     """
     out_dir = Path(out_dir).absolute()
+    if tag is None:
+        tag = f"{model_name}:{model_ver}"
     generate_dockerfile(
         model_name,
         model_ver,
@@ -395,18 +397,20 @@ def make_image(
         str(out_dir / "docker" / "Dockerfile"),
         "--target",
         "prod",
+        "--tag",
+        tag,
+        str(out_dir)
     ]
-    if not tag is None:
-        cmd = cmd + ["--tag", tag]
-    cmd.append(str(out_dir))
 
     rich.print(f"Running command: '{' '.join(cmd)}'")
 
     subprocess.run(cmd, check=True, text=True)
+    
+    rich.print(f"Generated image {tag}")
 
     # Test the generated model
     if run_tests:
-        rich.print("Running tests")
+        rich.print(f"Testing image {tag}")
         clean_name = filter_model_name(model_name)
         if tag is None:
             raise NotImplementedError(
