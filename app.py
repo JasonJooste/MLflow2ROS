@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 This module operates as a standalone executable which offers a command line
 interface for converting MLFlow models into ROS packages and containerises with Docker.
@@ -179,7 +180,7 @@ def write_pkg(env, srv, clean_name, out_dir):
         out_path.write_text(template.render(render_data))
 
 
-def write_dockerfile(clean_name, mlflow_dockerfile_path):
+def write_dockerfile(clean_name, mlflow_dockerfile_path, ros_distro):
     """Changes the MLFLow generated dockerfile such that ROS and the
     ROS package files are installed"""
     contents = mlflow_dockerfile_path.read_text()
@@ -189,7 +190,7 @@ def write_dockerfile(clean_name, mlflow_dockerfile_path):
     )
     # Add `as base` to the initial build stage
     assert not re.search("FROM ubuntu:20.04", contents) is None
-    contents = re.sub("FROM ubuntu:20.04", "FROM ros:noetic as base", contents)
+    contents = re.sub("FROM ubuntu:20.04", f"FROM ros:{ros_distro} as base", contents)
     # Remove the entrypoint command in the dockerfile as we will define a new one later
     assert not re.search(r"ENTRYPOINT(.*)(?=\n)", contents) is None
     contents = re.sub(r"ENTRYPOINT(.*)(?=\n)", "", contents)
@@ -203,7 +204,7 @@ def write_dockerfile(clean_name, mlflow_dockerfile_path):
     )
 
     render_data = {
-        "ros_distro": "noetic",
+        "ros_distro": ros_distro,
         "model_name": clean_name,
     }
 
@@ -279,6 +280,9 @@ def generate_dockerfile(
             help="Version of the model as listed on the MLFlow Model Registry"
         ),
     ],
+    ros_distro: Annotated[
+        Optional[str],
+        typer.Argument(help="The base ros distro for the package")] = "noetic",
     rospkg_directory: Annotated[
         Optional[str],
         typer.Option(
@@ -340,7 +344,7 @@ def generate_dockerfile(
     # edit mlflow's dockerfile
     clean_name = filter_model_name(model_name)
     mlflow_dockerfile_path = dockerfile_dir / "Dockerfile"
-    write_dockerfile(clean_name, mlflow_dockerfile_path)
+    write_dockerfile(clean_name, mlflow_dockerfile_path, ros_distro)
 
 
 @app.command()
@@ -354,6 +358,9 @@ def make_image(
             help="Version of the model as listed on the MLFlow Model Registry"
         ),
     ],
+    ros_distro: Annotated[
+        Optional[str],
+        typer.Option(help="The base ros distro for the package")] = "noetic",
     tag: Annotated[
         Optional[str], typer.Option(help="Name of the generated image")
     ] = None,
@@ -384,6 +391,7 @@ def make_image(
     generate_dockerfile(
         model_name,
         model_ver,
+        ros_distro,
         out_dir=out_dir,
         env_manager=env_manager,
         tracking_uri=tracking_uri,
