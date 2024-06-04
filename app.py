@@ -50,7 +50,6 @@ app = typer.Typer()
 class LoggedModelError(Exception):
     pass
 
-
 @dataclasses.dataclass
 class Msg:
     """Dataclass to store info that will be inserted into a ROS message"""
@@ -62,16 +61,63 @@ class Msg:
     def asdict(self):
         return dataclasses.asdict(self)
 
-
 @dataclasses.dataclass
 class Srv:
     """Dataclass to store info that will be inserted into a ROS service"""
-
+    
     request: Msg
     response: Msg
 
     def asdict(self):
         return dataclasses.asdict(self)
+
+@dataclasses.dataclass
+class PackageInfo:
+    """ A class to hold all relevant info for templating"""
+    service: Srv
+    # Msg package
+    msg_pkg_name: str
+    srv_file_name: str
+    # Srv package
+    srv_pkg_name: str
+    srv_node_name: str
+    srv_name: str
+    test_name: str
+    
+    def __init__(self, model_name, sig_dict):
+        """ Initialise class with all necessary templating info"""
+        request = self.unpack_schema(sig_dict["inputs"][0]) 
+        response = self.unpack_schema(sig_dict["outputs"][0])
+        self.service = Srv(request, response)
+        dashless = model_name.replace("-", "_")
+        # Msg package
+        self.msg_pkg_name = dashless + "_msgs"
+        self.srv_file_name = self.convert_to_pascal_case(model_name)
+        # Srv package
+        self.srv_pkg_name = dashless + "_server"
+        self.srv_node_name = dashless + "_srv_node"
+        self.srv_name = "serve_" + dashless
+        self.test_name = "test_" + dashless 
+
+    def convert_to_pascal_case(self, s):
+        return ''.join(x for x in s.title() if x.isalnum())
+
+    def unpack_schema(self, sig):
+        """Reads a model signature dictionary and returns its corresponding ROS msg info"""
+        if sig["type"] == "tensor":
+            ros_dtype = TENSOR_TO_ROS[sig["tensor-spec"]["dtype"]]
+            shape = sig["tensor-spec"]["shape"]
+        else:
+            assert False, "This should never be reached because of previous checks"
+        return Msg(ros_dtype + "[]", shape, sig["tensor-spec"]["dtype"])
+
+    def asdict(self):
+        return dataclasses.asdict(self)
+
+
+
+
+
 
 
 def unpack_schema(sig):
@@ -126,8 +172,8 @@ def check_signature(sig):
         raise NotImplementedError("Model signature with parameters is not supported")
 
 
-def gen_msg(model_name, model_ver):
-    """Writes a ROS .srv file for a model"""
+def get_model_signature(model_name, model_ver):
+    """Extract the signature from an mlflow model"""
     # get model signature
     model_uri = get_model_uri(model_name, model_ver)
     # NOTE: This could be moved out of this fn
@@ -135,31 +181,25 @@ def gen_msg(model_name, model_ver):
     # The values of the signature dict are stored as strings and need to be processed
     sig_dict = {k: json.loads(v) for k, v in sig.items() if v is not None}
     check_signature(sig_dict)
-    # We currently only support input/output lengths of 1
-    request = unpack_schema(sig_dict["inputs"][0])
-    response = unpack_schema(sig_dict["outputs"][0])
-    return Srv(request, response)
+    return sig_dict
 
-
-def write_msg(env, service, clean_name, out_dir):
+def write_msg(env, pkg_info, out_dir):
     """ Write the ros service"""
-    template = env.get_template("model_msgs/srv/__model_name__.srv.tmpl")
-    target_file = out_dir / "model_msgs" / "srv" / f"{clean_name}.srv"
-    # target_file.write_text(template.render(dataclasses.asdict(service)))
+    template = env.get_template("model_msgs/srv/__srv_name__.srv.tmpl")
+    target_file = out_dir / "model_msgs" / "srv" / f"{pkg_info.srv_file_name}.srv"
     target_file.parent.mkdir(exist_ok=True, parents=True)
-    target_file.write_text(template.render(service.asdict()))
+    target_file.write_text(template.render(pkg_info.asdict()))
 
 
-def write_server(env, clean_name, srv, out_dir):
+def write_server(env, pkg_info, out_dir):
     """Writes a ROS node server package for the model"""
-    render_data = srv.asdict() | {"model_name": clean_name, "msg_pkg": "model_msgs"}
     template = env.get_template("model_server/scripts/serve_model.py.tmpl")
     target_file = out_dir / "model_server" / "scripts" / "serve_model.py"
     target_file.parent.mkdir(exist_ok=True, parents=True)
-    target_file.write_text(template.render(render_data))
+    target_file.write_text(template.render(pkg_info.asdict()))
 
 
-def write_pkg(env, srv, clean_name, out_dir):
+def write_pkg(env, pkg_info, out_dir):
     """Creates the ROS package around the node server and message packages"""
     files = [
         "model_msgs/CMakeLists.txt.tmpl",
@@ -170,17 +210,15 @@ def write_pkg(env, srv, clean_name, out_dir):
         "model_server/launch/test_model.test.tmpl",
         "model_server/scripts/test_model.py.tmpl",
     ]
-    render_data = srv.asdict() | {"model_name": clean_name, "msg_pkg": "model_msgs"}
-
     for template_path in files:
         template = env.get_template(template_path)
         assert template_path[-5:] == ".tmpl"
         out_path = out_dir / template_path[:-5]
         out_path.parent.mkdir(exist_ok=True, parents=True)
-        out_path.write_text(template.render(render_data))
+        out_path.write_text(template.render(pkg_info.asdict()))
 
 
-def write_dockerfile(clean_name, mlflow_dockerfile_path, ros_distro):
+def write_dockerfile(pkg_info, mlflow_dockerfile_path, ros_distro):
     """Changes the MLFLow generated dockerfile such that ROS and the
     ROS package files are installed"""
     contents = mlflow_dockerfile_path.read_text()
@@ -205,8 +243,7 @@ def write_dockerfile(clean_name, mlflow_dockerfile_path, ros_distro):
 
     render_data = {
         "ros_distro": ros_distro,
-        "model_name": clean_name,
-    }
+    } | pkg_info.asdict()
 
     template = env.get_template("Dockerfile_addendum.tmpl")
     contents = contents + template.render(render_data)
@@ -214,7 +251,7 @@ def write_dockerfile(clean_name, mlflow_dockerfile_path, ros_distro):
     mlflow_dockerfile_path.write_text(contents)
 
 
-def test_image(tag, clean_name):
+def test_image(tag, pkg_info):
     """Trigger testing in an image"""
     test_cmd = [
         "docker",
@@ -226,7 +263,7 @@ def test_image(tag, clean_name):
         tag,
         "bash",
         "-c",
-        f". /activate_ros_env.bash; . /activate_mlflow_env.bash; rostest {clean_name} test_model.test",
+        f". /activate_ros_env.bash; . /activate_mlflow_env.bash; rostest {pkg_info.srv_pkg_name} test_model.test",
     ]
     subprocess.run(test_cmd, check=True, text=True)
 
@@ -260,11 +297,12 @@ def generate_rospkg(
         undefined=jinja2.StrictUndefined,
     )
 
-    clean_name = filter_model_name(model_name)
-    srv = gen_msg(model_name, model_ver)
-    write_msg(env, srv, clean_name, out_dir)
-    write_server(env, clean_name, srv, out_dir)
-    write_pkg(env, srv, clean_name, out_dir)
+    sig = get_model_signature(model_name, model_ver)
+    pkg_info = PackageInfo(model_name, sig)
+
+    write_msg(env, pkg_info, out_dir)
+    write_server(env, pkg_info, out_dir)
+    write_pkg(env, pkg_info, out_dir)
 
     rich.print(f"Generated ROS package in directory {out_dir}")
 
@@ -341,10 +379,11 @@ def generate_dockerfile(
         check=True,
         text=True,
     )
+    sig = get_model_signature(model_name, model_ver)
+    pkg_info = PackageInfo(model_name, sig)
     # edit mlflow's dockerfile
-    clean_name = filter_model_name(model_name)
     mlflow_dockerfile_path = dockerfile_dir / "Dockerfile"
-    write_dockerfile(clean_name, mlflow_dockerfile_path, ros_distro)
+    write_dockerfile(pkg_info, mlflow_dockerfile_path, ros_distro)
 
 
 @app.command()
@@ -419,11 +458,12 @@ def make_image(
     # Test the generated model
     if run_tests:
         rich.print(f"Testing image {tag}")
-        clean_name = filter_model_name(model_name)
         if tag is None:
             raise NotImplementedError(
                 "Testing without a tag to reference the image is not yet supported"
             )
+        sig = get_model_signature(model_name, model_ver)
+        pkg_info = PackageInfo(model_name, sig)
         test_image(tag, clean_name)
 
 

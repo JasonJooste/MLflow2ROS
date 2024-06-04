@@ -5,17 +5,17 @@ import functools
 import mlflow
 import numpy as np
 import rospy
-from {{msg_pkg}} import srv
+from {{ msg_pkg_name }} import srv
 
 
 def message_interface(request, model):
     """Converts the inputs and outputs to and from ROS messages respectively"""
 
     # Get raw data from the ROS request
-    data = np.array(request.model_in, dtype="{{request.base_dtype }}")
+    data = np.array(request.model_in, dtype="{{service.request.base_dtype }}")
 
     # reshape request if necessary
-    data = data.reshape({{ request.shape }})
+    data = data.reshape({{ service.request.shape }})
 
     # Use the model to make the prediction
     predictions = model.predict(data)
@@ -24,22 +24,22 @@ def message_interface(request, model):
     predictions = predictions.ravel()
 
     # Build a service response from the prediction
-    response = srv.{{ model_name }}Response(predictions)
+    response = srv.{{ srv_file_name }}Response(predictions)
 
     return response
 
 
 def main():
     """Start the model node with the message interface function as the service command"""
-    rospy.init_node("{{ model_name }}")
+    rospy.init_node("{{ srv_node_name }}")
 
-    # Pull in the mlflow model
+    # Load the mlflow model
     pyfunc_model = mlflow.pyfunc.load_model(model_uri=f"/opt/ml/model")
     rospy.loginfo("Model loaded")
 
     rospy.Service(
-        "{{ model_name }}",
-        srv.{{ model_name }},
+        "{{ srv_name }}",
+        srv.{{ srv_file_name }},
         functools.partial(message_interface, model=pyfunc_model),
     )
 

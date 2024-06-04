@@ -1,0 +1,9 @@
+{{ service.request.ros_dtype }} model_in
+# Stored as a string because constant arrays aren't possible
+string IN_SHAPE={{ service.request.shape }}
+
+---
+
+{{ service.response.ros_dtype }} model_out
+# Stored as a string because constant arrays aren't possible
+string OUT_SHAPE={{ service.response.shape }}

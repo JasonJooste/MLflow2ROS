@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project({{ msg_pkg }})
+project({{ msg_pkg_name }})
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -10,7 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  {{ model_name }}.srv
+  {{ srv_file_name }}.srv
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -20,7 +20,6 @@ generate_messages(
 )
 
 catkin_package(
- LIBRARIES {{ msg_pkg }}
  CATKIN_DEPENDS std_msgs
  CATKIN_DEPENDS message_runtime
 )

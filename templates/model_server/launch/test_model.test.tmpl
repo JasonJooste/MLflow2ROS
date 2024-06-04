@@ -1,4 +1,4 @@
 <launch>
-  <node name="{{ model_name }}" pkg="{{ model_name }}" type="serve_model.py" />
-  <test test-name="test_{{ model_name }}" pkg="{{ model_name }}" type="test_model.py"/>
+  <node pkg="{{ srv_pkg_name }}" type="serve_model.py" />
+  <test test-name="{{ test_name }}" pkg="{{ srv_pkg_name }}" type="test_model.py"/>
 </launch>
