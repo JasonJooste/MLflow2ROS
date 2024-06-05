@@ -185,7 +185,7 @@ def get_model_signature(model_name, model_ver):
 
 def write_msg(env, pkg_info, out_dir):
     """ Write the ros service"""
-    template = env.get_template("model_msgs/srv/__srv_name__.srv.tmpl")
+    template = env.get_template("model_msgs/srv/__srv_file_name__.srv.tmpl")
     target_file = out_dir / "model_msgs" / "srv" / f"{pkg_info.srv_file_name}.srv"
     target_file.parent.mkdir(exist_ok=True, parents=True)
     target_file.write_text(template.render(pkg_info.asdict()))
