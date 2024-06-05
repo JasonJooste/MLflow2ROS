@@ -464,7 +464,7 @@ def make_image(
             )
         sig = get_model_signature(model_name, model_ver)
         pkg_info = PackageInfo(model_name, sig)
-        test_image(tag, clean_name)
+        test_image(tag, pkg_info)
 
 
 if __name__ == "__main__":
